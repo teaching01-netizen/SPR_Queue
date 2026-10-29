@@ -1,0 +1,242 @@
+{
+  "event": {
+    "id": "performance-may-aug-2026",
+    "title": "Student Performance Report",
+    "cycle": "May – August 2026",
+    "venue": "Warwick Institute · ชั้น 12A",
+    "sample": true,
+    "timezone": "Asia/Bangkok"
+  },
+  "rules": [
+    {
+      "level": "Beginner",
+      "subject": "Math",
+      "date": "2026-08-15",
+      "mode": "On-site",
+      "periods": [
+        {
+          "id": "P1100",
+          "start": "11:00",
+          "end": "12:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1630_1800",
+          "start": "16:30",
+          "end": "18:00",
+          "capacity": 6
+        },
+        {
+          "id": "P1800",
+          "start": "18:00",
+          "end": "19:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1900",
+          "start": "19:00",
+          "end": "20:00",
+          "capacity": 4
+        }
+      ]
+    },
+    {
+      "level": "Beginner",
+      "subject": "Verbal",
+      "date": "2026-08-15",
+      "mode": "On-site",
+      "periods": [
+        {
+          "id": "P1000",
+          "start": "10:00",
+          "end": "11:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1100",
+          "start": "11:00",
+          "end": "12:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1630_1800",
+          "start": "16:30",
+          "end": "18:00",
+          "capacity": 6
+        },
+        {
+          "id": "P1800",
+          "start": "18:00",
+          "end": "19:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1900",
+          "start": "19:00",
+          "end": "20:00",
+          "capacity": 4
+        }
+      ]
+    },
+    {
+      "level": "Beginner",
+      "subject": "Combined",
+      "date": "2026-08-15",
+      "mode": "On-site",
+      "periods": [
+        {
+          "id": "P1300",
+          "start": "13:00",
+          "end": "14:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1400",
+          "start": "14:00",
+          "end": "15:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1500_1630",
+          "start": "15:00",
+          "end": "16:30",
+          "capacity": 6
+        }
+      ]
+    },
+    {
+      "level": "High Level",
+      "subject": "Math",
+      "date": "2026-08-14",
+      "mode": "Online via Zoom",
+      "periods": [
+        {
+          "id": "P1100",
+          "start": "11:00",
+          "end": "12:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1630_1800",
+          "start": "16:30",
+          "end": "18:00",
+          "capacity": 6
+        },
+        {
+          "id": "P1800",
+          "start": "18:00",
+          "end": "19:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1900",
+          "start": "19:00",
+          "end": "20:00",
+          "capacity": 4
+        }
+      ]
+    },
+    {
+      "level": "High Level",
+      "subject": "Verbal",
+      "date": "2026-08-14",
+      "mode": "Online via Zoom",
+      "periods": [
+        {
+          "id": "P1000",
+          "start": "10:00",
+          "end": "11:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1100",
+          "start": "11:00",
+          "end": "12:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1630_1800",
+          "start": "16:30",
+          "end": "18:00",
+          "capacity": 6
+        },
+        {
+          "id": "P1800",
+          "start": "18:00",
+          "end": "19:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1900",
+          "start": "19:00",
+          "end": "20:00",
+          "capacity": 4
+        }
+      ]
+    },
+    {
+      "level": "High Level",
+      "subject": "Combined",
+      "date": "2026-08-14",
+      "mode": "Online via Zoom",
+      "periods": [
+        {
+          "id": "P1300",
+          "start": "13:00",
+          "end": "14:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1400",
+          "start": "14:00",
+          "end": "15:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1500_1630",
+          "start": "15:00",
+          "end": "16:30",
+          "capacity": 6
+        }
+      ]
+    },
+    {
+      "level": "High Level",
+      "subject": "Verbal",
+      "date": "2026-08-15",
+      "mode": "On-site",
+      "periods": [
+        {
+          "id": "P1000",
+          "start": "10:00",
+          "end": "11:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1100",
+          "start": "11:00",
+          "end": "12:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1630_1800",
+          "start": "16:30",
+          "end": "18:00",
+          "capacity": 6
+        },
+        {
+          "id": "P1800",
+          "start": "18:00",
+          "end": "19:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1900",
+          "start": "19:00",
+          "end": "20:00",
+          "capacity": 4
+        }
+      ]
+    }
+  ]
+}

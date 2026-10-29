@@ -1,0 +1,77 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const mod = import('../frontend/src/polling.ts');
+async function harness(interval = 5000, fetch) {
+  const { createPoller } = await mod;
+  let time = 0, visible = true, calls = 0, id = 0;
+  const tasks = new Map();
+  const tick = async ms => {
+    const end = time + ms;
+    while (true) {
+      const next = [...tasks].filter(([,t])=>t.at <= end).sort((a,b)=>a[1].at-b[1].at)[0];
+      if (!next) break;
+      tasks.delete(next[0]); time = next[1].at; next[1].fn();
+      await flush();
+    }
+    time = end; await flush();
+  };
+  const poller = createPoller({
+    async fetch() { calls++; if (fetch) await fetch(); }, interval: () => typeof interval === 'function' ? interval() : interval,
+    available: () => visible, now: () => time,
+    schedule(fn,ms) { const key = ++id; tasks.set(key,{at:time+ms,fn});return key; },
+    cancel(key) { tasks.delete(key); },
+  });
+  return { poller, tick, get calls(){return calls;}, get tasks(){return tasks.size;},
+    visible(value) { visible=value; poller.resume(); } };
+}
+async function flush() { for(let i=0;i<12;i++) await Promise.resolve(); }
+function deferred() { let resolve; const promise = new Promise(r => resolve=r);return { promise, resolve }; }
+
+test('booking and parent reduce requests; Staff stays fast',async()=>{
+  for (const [interval,count] of [[30000,3],[10000,7],[5000,13]]) {
+    const h=await harness(interval);await h.poller.refresh();await h.tick(60000);
+    assert.equal(h.calls,count);h.poller.stop();assert.equal(h.tasks,0);
+  }
+});
+test('hidden/offline stops all timers, returns stale data immediately, focus is deduplicated',async()=>{
+  const h=await harness();await h.poller.refresh();h.visible(false);await h.tick(60000);
+  assert.equal(h.calls,1);assert.equal(h.tasks,0);
+  h.visible(true);h.poller.resume();h.poller.resume();await flush();assert.equal(h.calls,2);
+  await h.tick(1000);h.poller.resume();await flush();assert.equal(h.calls,2);
+  await h.tick(4000);assert.equal(h.calls,3);h.poller.stop();
+});
+test('slow reads never overlap; one mutation followup coalesces duplicate refreshes',async()=>{
+  const gates=[deferred(),deferred()];let n=0;
+  const h=await harness(5000,()=>gates[n++]?.promise);
+  const flight=h.poller.refresh();await h.tick(30000);assert.equal(h.calls,1);
+  h.poller.invalidate();h.poller.invalidate();const same=h.poller.refresh();assert.equal(flight,same);
+  gates[0].resolve();await flush();assert.equal(h.calls,2);
+  gates[1].resolve();await flight;assert.equal(h.calls,2);
+  await h.tick(4999);assert.equal(h.calls,2);await h.tick(1);assert.equal(h.calls,3);h.poller.stop();
+});
+test('errors back off 30/60/120 seconds and successful retry restores normal cadence',async()=>{
+  let fail=true;const h=await harness(5000,async()=>{if(fail)throw new Error('offline');});
+  await h.poller.refresh();await h.tick(29999);assert.equal(h.calls,1);await h.tick(1);assert.equal(h.calls,2);
+  await h.tick(60000);assert.equal(h.calls,3);await h.tick(119999);assert.equal(h.calls,3);
+  fail=false;await h.tick(1);assert.equal(h.calls,4);await h.tick(5000);assert.equal(h.calls,5);h.poller.stop();
+});
+test('focus does not bypass retry delay; explicit refresh can retry immediately',async()=>{
+  const h=await harness(5000,async()=>{throw new Error('failed');});await h.poller.refresh();
+  h.poller.resume();h.poller.resume();await flush();assert.equal(h.calls,1);
+  await h.poller.refresh();assert.equal(h.calls,2);h.poller.stop();
+});
+test('cleanup during a request cannot schedule another read or mutation followup',async()=>{
+  const gate=deferred();const h=await harness(5000,()=>gate.promise);const f=h.poller.refresh();
+  h.poller.invalidate();h.poller.stop();gate.resolve();await f;await h.tick(60000);
+  assert.equal(h.calls,1);assert.equal(h.tasks,0);
+});
+test('near queue polls 5s; completed/cancelled/no-show still detect a later restore',async()=>{
+  const { parentPollInterval }=await mod;
+  assert.equal(parentPollInterval(null),10000);
+  assert.equal(parentPollInterval({status:'Waiting',queuesUntilTurn:3}),10000);
+  for(const state of [{status:'Waiting',queuesUntilTurn:2},{status:'Calling',queuesUntilTurn:null},{status:'Serving',queuesUntilTurn:0}])assert.equal(parentPollInterval(state),5000);
+  for(const status of ['Completed','Cancelled','No-show'])assert.equal(parentPollInterval({status,queuesUntilTurn:null}),60000);
+  let state={status:'Completed',queuesUntilTurn:null};const h=await harness(()=>parentPollInterval(state));
+  await h.poller.refresh();state={status:'Waiting',queuesUntilTurn:1};await h.tick(60000);await h.tick(5000);
+  assert.equal(h.calls,3);h.poller.stop();
+});
