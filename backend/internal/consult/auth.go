@@ -106,8 +106,9 @@ func (a *Auth) Login(ctx context.Context, username, password string) (Identity, 
 	if err != nil && err != sql.ErrNoRows {
 		return Identity{}, err
 	}
-	// Fixed username=password accounts belong only to the local sample event.
-	if password == username && (!a.Service.Config.Event.Sample || !strings.HasPrefix(a.Service.Config.Event.ID, "local-test-")) {
+	// Local-test credentials stay confined to sample events. Confirmed production
+	// events may use explicitly provisioned username/password pairs.
+	if password == username && strings.HasPrefix(a.Service.Config.Event.ID, "local-test-") && !a.Service.Config.Event.Sample {
 		for _, name := range localStaffNames {
 			if username == name {
 				err = sql.ErrNoRows

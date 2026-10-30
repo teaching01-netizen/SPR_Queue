@@ -41,7 +41,10 @@ func ParseProductionStaff(raw string) ([]ProductionStaffAccount, error) {
 	passwords := map[string]bool{}
 	admins := 0
 	for _, a := range accounts {
-		if !allowed[a.Username] || seen[a.Username] || len(a.Password) < 12 || len(a.Password) > 72 || strings.EqualFold(a.Username, a.Password) || passwords[a.Password] {
+		// The event's seven named Staff accounts may use the exact username as
+		// their password, as requested. Other passwords keep the length checks.
+		usernamePassword := a.Password == a.Username
+		if !allowed[a.Username] || seen[a.Username] || len(a.Password) > 72 || (!usernamePassword && (len(a.Password) < 12 || strings.EqualFold(a.Username, a.Password))) || passwords[a.Password] {
 			return nil, fmt.Errorf("production Staff usernames/passwords are missing, duplicated or too weak")
 		}
 		if a.Role != "operator" && a.Role != "admin" {

@@ -24,7 +24,7 @@ func TestProductionStaffValidation(t *testing.T) {
 	if _, e := ParseProductionStaff(encode(good)); e != nil {
 		t.Fatal(e)
 	}
-	for _, raw := range []string{"", `[]`, encode(good) + ` garbage`, encode(good) + ` {}`, strings.Replace(encode(good), `"RD1"`, `"unknown"`, 1), strings.Replace(encode(good), `"private-production-RD1-pass123"`, `"RD1"`, 1), strings.ReplaceAll(encode(good), `"admin"`, `"operator"`)} {
+	for _, raw := range []string{"", `[]`, encode(good) + ` garbage`, encode(good) + ` {}`, strings.Replace(encode(good), `"RD1"`, `"unknown"`, 1), strings.Replace(encode(good), `"private-production-RD1-pass123"`, `"rd1"`, 1), strings.Replace(encode(good), `"private-production-RD1-pass123"`, `"short"`, 1), strings.ReplaceAll(encode(good), `"admin"`, `"operator"`)} {
 		if _, e := ParseProductionStaff(raw); e == nil {
 			t.Fatal("accepted invalid production roster")
 		}
@@ -32,6 +32,22 @@ func TestProductionStaffValidation(t *testing.T) {
 	good[1].Password = good[0].Password
 	if _, e := ParseProductionStaff(encode(good)); e == nil {
 		t.Fatal("duplicate passwords")
+	}
+}
+func TestProductionStaffUsernamePasswords(t *testing.T) {
+	accounts := productionAccounts()
+	for i := range accounts {
+		accounts[i].Password = accounts[i].Username
+	}
+	raw, _ := json.Marshal(accounts)
+	parsed, err := ParseProductionStaff(string(raw))
+	if err != nil || len(parsed) != 7 {
+		t.Fatalf("requested seven-account credentials rejected: %v", err)
+	}
+	for _, a := range parsed {
+		if a.Password != a.Username {
+			t.Fatal("username password changed")
+		}
 	}
 }
 func TestProductionStaffProvisionPreservesDataAndSessions(t *testing.T) {
@@ -95,6 +111,32 @@ func TestProductionStaffProvisionPreservesDataAndSessions(t *testing.T) {
 	}
 	if _, e = s.Track(testCtx, c.Token); e != nil {
 		t.Fatal("provision lost booking/tracking", e)
+	}
+	// Apply the requested username/password pairs explicitly. Existing sessions
+	// are revoked, old passwords stop working, and booking data is preserved.
+	for i := range creds {
+		creds[i].Password = creds[i].Username
+	}
+	usernamePasswords, _ := json.Marshal(creds)
+	if e = a.ProvisionProductionStaff(testCtx, string(usernamePasswords), false); e == nil {
+		t.Fatal("username passwords bypassed explicit provisioning")
+	}
+	if e = a.ProvisionProductionStaff(testCtx, string(usernamePasswords), true); e != nil {
+		t.Fatal(e)
+	}
+	for _, item := range creds {
+		if _, e = a.Login(testCtx, item.Username, item.Password); e != nil {
+			t.Fatal(item.Username, e)
+		}
+	}
+	if _, e = a.Login(testCtx, "RD1", "changed-production-password-123"); e == nil {
+		t.Fatal("old password still accepted")
+	}
+	if e = a.ProvisionProductionStaff(testCtx, string(usernamePasswords), false); e != nil {
+		t.Fatal("normal redeploy rejected username passwords", e)
+	}
+	if _, e = s.Track(testCtx, c.Token); e != nil {
+		t.Fatal("password change lost booking/tracking", e)
 	}
 	s.Config.Event.Sample = true
 	if e = a.ProvisionProductionStaff(testCtx, string(raw), true); e == nil {
