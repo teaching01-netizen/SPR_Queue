@@ -27,11 +27,13 @@ async function harness(interval = 5000, fetch) {
 async function flush() { for(let i=0;i<12;i++) await Promise.resolve(); }
 function deferred() { let resolve; const promise = new Promise(r => resolve=r);return { promise, resolve }; }
 
-test('booking and parent reduce requests; Staff stays fast',async()=>{
-  for (const [interval,count] of [[30000,3],[10000,7],[5000,13]]) {
-    const h=await harness(interval);await h.poller.refresh();await h.tick(60000);
-    assert.equal(h.calls,count);h.poller.stop();assert.equal(h.tasks,0);
-  }
+test('five-second live polling maintains one timer and stops cleanly',async()=>{
+  const { LIVE_POLL_INTERVAL_MS }=await mod;
+  const h=await harness(LIVE_POLL_INTERVAL_MS);await h.poller.refresh();
+  await h.tick(4999);assert.equal(h.calls,1);
+  await h.tick(1);assert.equal(h.calls,2);
+  await h.tick(55000);assert.equal(h.calls,13);assert.equal(h.tasks,1);
+  h.poller.stop();await h.tick(60000);assert.equal(h.calls,13);assert.equal(h.tasks,0);
 });
 test('hidden/offline stops all timers, returns stale data immediately, focus is deduplicated',async()=>{
   const h=await harness();await h.poller.refresh();h.visible(false);await h.tick(60000);
@@ -64,14 +66,4 @@ test('cleanup during a request cannot schedule another read or mutation followup
   const gate=deferred();const h=await harness(5000,()=>gate.promise);const f=h.poller.refresh();
   h.poller.invalidate();h.poller.stop();gate.resolve();await f;await h.tick(60000);
   assert.equal(h.calls,1);assert.equal(h.tasks,0);
-});
-test('near queue polls 5s; completed/cancelled/no-show still detect a later restore',async()=>{
-  const { parentPollInterval }=await mod;
-  assert.equal(parentPollInterval(null),10000);
-  assert.equal(parentPollInterval({status:'Waiting',queuesUntilTurn:3}),10000);
-  for(const state of [{status:'Waiting',queuesUntilTurn:2},{status:'Calling',queuesUntilTurn:null},{status:'Serving',queuesUntilTurn:0}])assert.equal(parentPollInterval(state),5000);
-  for(const status of ['Completed','Cancelled','No-show'])assert.equal(parentPollInterval({status,queuesUntilTurn:null}),60000);
-  let state={status:'Completed',queuesUntilTurn:null};const h=await harness(()=>parentPollInterval(state));
-  await h.poller.refresh();state={status:'Waiting',queuesUntilTurn:1};await h.tick(60000);await h.tick(5000);
-  assert.equal(h.calls,3);h.poller.stop();
 });

@@ -1,29 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPoller } from './polling';
+import { createPoller, LIVE_POLL_INTERVAL_MS } from './polling';
 
-type LiveOptions<T> = { intervalMs?: number | ((data: T | null) => number); enabled?: boolean };
-export function useLive<T>(fetcher: () => Promise<T>, { intervalMs = 5000, enabled = true }: LiveOptions<NoInfer<T>> = {}) {
+type LiveOptions = { enabled?: boolean };
+export function useLive<T>(fetcher: () => Promise<T>, { enabled = true }: LiveOptions = {}) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [updated, setUpdated] = useState<Date | null>(null);
-  const intervalRef = useRef(intervalMs);
-  intervalRef.current = intervalMs;
   const pollerRef = useRef<ReturnType<typeof createPoller> | null>(null);
   const refresh = useCallback(() => pollerRef.current?.refresh() ?? Promise.resolve(), []);
 
   useEffect(() => {
     if (!enabled) return;
     let active = true;
-    let latest: T | null = null;
     setData(null); setError(''); setLoading(true); setUpdated(null);
     const poller = createPoller({
       available: () => !document.hidden && navigator.onLine !== false,
-      interval: () => typeof intervalRef.current === 'function' ? intervalRef.current(latest) : intervalRef.current,
+      interval: () => LIVE_POLL_INTERVAL_MS,
       async fetch() {
         try {
           const next = await fetcher();
-          if (active) { latest = next; setData(next); setError(''); setUpdated(new Date()); }
+          if (active) { setData(next); setError(''); setUpdated(new Date()); }
         } catch (e) {
           if (active) setError(e instanceof Error ? e.message : 'โหลดข้อมูลไม่สำเร็จ');
           throw e;

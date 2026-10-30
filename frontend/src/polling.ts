@@ -1,3 +1,5 @@
+export const LIVE_POLL_INTERVAL_MS = 5000;
+
 // Schedule after completion: slow requests never overlap or accumulate timer ticks.
 export function createPoller({ fetch: fetchData, interval, available,
   now = Date.now, schedule = (fn: () => void, ms: number) => setTimeout(fn, ms), cancel = clearTimeout,
@@ -40,11 +42,4 @@ export function createPoller({ fetch: fetchData, interval, available,
     },
     stop() { stopped = true; clear(); },
   };
-}
-
-export function parentPollInterval(data: { status: string; queuesUntilTurn: number | null } | null): number {
-  if (data && ['Completed', 'Cancelled', 'No-show'].includes(data.status)) return 60000;
-  if (data && (data.status === 'Calling' || data.status === 'Serving' ||
-    (data.queuesUntilTurn !== null && data.queuesUntilTurn <= 2))) return 5000;
-  return 10000;
 }

@@ -183,3 +183,8 @@ Adapter ไม่ใช้ connection startup `search_path` แบบ server ป
 ## Remove database backup/recovery — 29 October 2026
 
 Removed backup/restore scripts, images, Compose drill, recovery workflow and generator keys. Production generator creates web settings, seven Staff credentials and private README only. Application booking restore/archive features remain unchanged. Consult Backup staged creation cancelled; bucket object deleted (no provisioned instances); deleted bucket reference still present in pending Railway patch and must be discarded before deployment. Main Postgres service and persistent volume retained. No deployment performed.
+
+## Uniform five-second frontend refresh — 30 October 2026
+
+User requested reverting the cost-saving per-page cadence. Booking/edit availability, booking-success mounted reads, parent tracking (including Completed/Cancelled/No-show and all positions), Staff and display now use the same5000ms policy. No-token tracking page does not request a booking. Hidden/offline suspension, non-overlapping requests, mutation invalidation and error retry remain. No database, booking, queue or email behavior changes. Railway bucket removed from staged changes; main services remain staged.
+- Validation: all15Node tests passed; TypeScript/Vite production build passed. Browser against fixture API verified booking/success, far/near parent queue, Completed/Cancelled/No-show, Staff and public display at5s, with hidden pause and coalesced resume retained. No real Railway deployment/load or remote GitHub update claimed.
