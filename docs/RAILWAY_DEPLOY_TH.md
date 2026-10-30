@@ -66,25 +66,16 @@ Hobbyมีเครดิตทรัพยากร$5ต่อรอบบิ�
 
 Frontend+Goเป็นบริการเดียว ไม่ต้องเพิ่มบริการFrontendแยก ชุดทดสอบรันในเครื่องหรือGitHub Actions ไม่เปิดstagingบนRailwayค้างไว้ ยังไม่ได้ตั้งhard limitปิดเว็บอัตโนมัติ
 
-## 6. อีเมลจริงเมื่อพร้อม
+## 6. ส่งอีเมลผ่าน Google Apps Script
 
-Hobbyใช้SMTPไม่ได้ โค้ดรองรับResendผ่านHTTPSโดยไม่ใช้รหัสผ่านเมลงาน:
+ใช้ Google Apps Script MailApp เป็นผู้ส่ง ตามขั้นตอนใน [EMAIL_SETUP_TH.md](EMAIL_SETUP_TH.md) สร้าง Web app ที่ execute as Me และให้ Railway เรียกได้ พร้อมกุญแจเฉพาะการส่งเมล
 
 ```text
-EMAIL_PROVIDER=resend
-EMAIL_FROM=Warwick Institute <consult@YOUR_VERIFIED_DOMAIN>
-RESEND_API_KEY=YOUR_PRIVATE_API_KEY
+EMAIL_PROVIDER=apps-script
+APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
+APPS_SCRIPT_SECRET=YOUR_PRIVATE_64_CHARACTER_HEX_SECRET
 ```
 
-ผลตรวจ 30 ตุลาคม 2026: เว็บจริงยังไม่ได้เปิดส่งอีเมล ไม่มี EMAIL_FROM และ RESEND_API_KEY ในบริการ จึงยังไม่ส่งอีเมลหลังลงทะเบียน แม้ระบบคิวส่งและแม่แบบจะมีอยู่แล้ว
+อัปโหลดโค้ดที่รองรับ Apps Script ก่อนเปิด provider ค่าที่ขาด/URL ที่ไม่ใช่ Web app จริงจะถูกปฏิเสธ แม่แบบเดิมยังมีช่วงเวลา Consult กับปุ่มติดตามคิว ส่งจากบัญชีที่ Deploy Script ไม่ต้องใช้ Resend หรือ SMTP App Password
 
-ต้องยืนยันsending domainและDNSก่อน ส่งทดสอบไปผู้รับที่กำหนดแล้วตรวจInbox/Spamจริง Sentหมายถึงผู้ให้บริการรับคำขอ ยังไม่ยืนยันว่าเข้าInbox อีเมลใช้templateเดิม มีช่วงเวลาConsultและปุ่มลิงก์ส่วนตัว หากยังไม่พร้อมให้คงEMAIL_PROVIDER=off และใช้Staffคัดลอกลิงก์
-
-เอกสารทางการ:
-- https://docs.railway.com/pricing/plans
-- https://docs.railway.com/networking/outbound-networking
-- https://docs.railway.com/networking/public-networking
-- https://docs.railway.com/deployments/healthchecks
-- https://resend.com/docs/api-reference/emails/send-email
-
-ดูขั้นตอนเปิดอีเมลทีละขั้นใน [EMAIL_SETUP_TH.md](EMAIL_SETUP_TH.md) และรายการเปลี่ยนหน้าจองใน [UI_UPDATE_TH.md](UI_UPDATE_TH.md)
+การส่งจริงยังรอการ Deploy/อนุญาตสิทธิ์ของ Apps Script และ URL /exec จากผู้ใช้ ไม่อ้างว่ารับถึง Inbox จนกว่าจะทดสอบกับผู้รับที่กำหนด ดูการปรับ UI ใน [UI_UPDATE_TH.md](UI_UPDATE_TH.md)

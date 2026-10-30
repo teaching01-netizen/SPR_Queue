@@ -41,6 +41,12 @@ func configuredMailer(cfg consult.Config) (consult.Mailer, bool, error) {
 	switch provider {
 	case "off":
 		return nil, false, nil
+	case "apps-script":
+		endpoint, secret := os.Getenv("APPS_SCRIPT_URL"), os.Getenv("APPS_SCRIPT_SECRET")
+		if err := consult.ValidateAppsScriptSettings(endpoint, secret); err != nil {
+			return nil, false, err
+		}
+		return consult.AppsScriptMailer{URL: endpoint, Secret: secret, Config: cfg}, true, nil
 	case "resend":
 		from := os.Getenv("EMAIL_FROM")
 		if _, err := mail.ParseAddress(from); err != nil || strings.ContainsAny(from, "\r\n") || os.Getenv("RESEND_API_KEY") == "" {
@@ -53,6 +59,6 @@ func configuredMailer(cfg consult.Config) (consult.Mailer, bool, error) {
 		}
 		return consult.SMTPMailer{Host: os.Getenv("SMTP_HOST"), Port: env("SMTP_PORT", "587"), Username: os.Getenv("SMTP_USERNAME"), Password: os.Getenv("SMTP_PASSWORD"), From: os.Getenv("SMTP_FROM"), Config: cfg, Security: env("SMTP_SECURITY", "starttls")}, true, nil
 	default:
-		return nil, false, fmt.Errorf("EMAIL_PROVIDER must be off, smtp or resend")
+		return nil, false, fmt.Errorf("EMAIL_PROVIDER must be off, apps-script, smtp or resend")
 	}
 }

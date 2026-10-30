@@ -32,12 +32,23 @@ func TestRailwayPortAndDomain(t *testing.T) {
 	}
 }
 func TestEmailProviderConfiguration(t *testing.T) {
-	for _, name := range []string{"EMAIL_PROVIDER", "SMTP_HOST", "SMTP_FROM", "RESEND_API_KEY", "EMAIL_FROM"} {
+	for _, name := range []string{"EMAIL_PROVIDER", "SMTP_HOST", "SMTP_FROM", "RESEND_API_KEY", "EMAIL_FROM", "APPS_SCRIPT_URL", "APPS_SCRIPT_SECRET"} {
 		t.Setenv(name, "")
 	}
 	cfg := consult.Config{}
 	if _, enabled, e := configuredMailer(cfg); e != nil || enabled {
 		t.Fatal("mail not off by default")
+	}
+	t.Setenv("EMAIL_PROVIDER", "apps-script")
+	if _, _, e := configuredMailer(cfg); e == nil {
+		t.Fatal("incomplete Apps Script config accepted")
+	}
+	t.Setenv("APPS_SCRIPT_URL", "https://script.google.com/macros/s/deployment_fixture_123/exec")
+	t.Setenv("APPS_SCRIPT_SECRET", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	if mailer, on, e := configuredMailer(cfg); e != nil || !on {
+		t.Fatal("Apps Script not enabled", e)
+	} else if _, ok := mailer.(consult.AppsScriptMailer); !ok {
+		t.Fatal("wrong Apps Script adapter")
 	}
 	t.Setenv("EMAIL_PROVIDER", "resend")
 	if _, _, e := configuredMailer(cfg); e == nil {

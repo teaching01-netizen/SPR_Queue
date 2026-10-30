@@ -220,7 +220,7 @@ func (s *Service) ProcessMail(ctx context.Context, mailer Mailer) (bool, error) 
 	fresh.EmailStatus = "Sent"
 	if sendErr != nil {
 		stateName = "Pending"
-		code = "SMTP_DELIVERY_FAILED"
+		code = "EMAIL_DELIVERY_FAILED"
 		fresh.EmailStatus = "Failed"
 		nextAt = time.Now().Add(time.Duration(1<<uint(attempts-1)) * time.Minute).Unix()
 		if attempts >= 5 {
