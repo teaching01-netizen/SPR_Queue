@@ -86,3 +86,5 @@ RESEND_API_KEY=YOUR_PRIVATE_API_KEY
 - https://docs.railway.com/networking/public-networking
 - https://docs.railway.com/deployments/healthchecks
 - https://resend.com/docs/api-reference/emails/send-email
+
+ดูขั้นตอนเปิดอีเมลทีละขั้นใน [EMAIL_SETUP_TH.md](EMAIL_SETUP_TH.md) และรายการเปลี่ยนหน้าจองใน [UI_UPDATE_TH.md](UI_UPDATE_TH.md)

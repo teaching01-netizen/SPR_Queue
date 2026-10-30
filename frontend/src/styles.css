@@ -54,3 +54,43 @@
 .mini-btn.danger{color:#a93040;border-color:#e9ccd1;background:#fff8f8}.test-delete-confirm{display:flex;align-items:center;gap:10px;margin:20px 0;line-height:1.7;font-weight:600}.test-delete-confirm input{appearance:auto;width:18px;height:18px;accent-color:#851f38;flex-shrink:0}.completed-history-filter{display:flex;align-items:center;gap:14px;margin:15px 0 22px;font-size:13px}.completed-history-filter select{width:auto;min-width:190px}.staff-view-tabs{flex-wrap:wrap}@media(max-width:600px){.completed-history-filter{align-items:flex-start;flex-direction:column;gap:7px}.completed-history-filter select{width:100%}.test-delete-confirm{font-size:13px}}
 
 .staff-tracking-link{margin:20px 0;padding:16px;border:1px solid var(--border);border-radius:10px;background:#f8f9fb;min-width:0}.staff-tracking-link h3{margin:0 0 12px;font-weight:600}.staff-tracking-link label{font-size:11px;color:#53677f}.staff-tracking-link input{font-size:12px;margin:6px 0 12px;min-width:0}.staff-tracking-link .btn{width:100%;justify-content:center;white-space:normal;min-height:40px}.staff-tracking-link p{margin:10px 0 0;font-size:11px;line-height:1.7;overflow-wrap:anywhere}.staff-tracking-link .notice{margin-bottom:12px}
+
+
+/* Registration information hierarchy. */
+.booking-hero .hero-copy{flex:1 1 64%;min-width:0;position:relative;z-index:3}
+.booking-hero .report-heading{font-size:32px;line-height:1.45;font-weight:700;letter-spacing:-.6px;color:#111111;overflow-wrap:anywhere}
+.booking-hero .report-heading>span{display:block;color:inherit;font-size:inherit;font-weight:inherit}
+.booking-hero .report-heading>span+span{margin-top:12px}
+.booking-hero .hero-art{flex:0 0 32%;min-width:230px;align-self:center}
+.consult-duration-note{margin:0 0 16px;padding:12px 14px;border-left:3px solid var(--burgundy);border-radius:0 8px 8px 0;background:#faf6f1;color:#4f5d6d;font-size:14px;line-height:1.85}
+.consult-duration-note strong{font-weight:700;color:#26394f}
+.seminar-box{padding:22px;gap:14px;border-color:#d4dce6;color:#33465e}
+.seminar-box>svg{flex-shrink:0;margin-top:3px;color:#425874}
+.seminar-box>div{min-width:0;flex:1}
+.seminar-box h3{font-size:18px;line-height:1.6;font-weight:700;color:#20344e;margin:0}
+.seminar-box .seminar-intro{font-size:15px;line-height:1.75;font-weight:600;color:#465973;margin:7px 0 14px}
+.seminar-schedule{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px;margin-bottom:18px}
+.seminar-box .seminar-time{margin:0;padding:14px 16px;border:1px solid #ead3d8;border-left:4px solid var(--burgundy);border-radius:8px;background:#fff;display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.seminar-subject{font-size:14px;font-weight:700;color:#4a5b70}
+.seminar-box .seminar-date{font-size:18px;line-height:1.6;font-weight:700;color:#1e3047}
+.seminar-box .seminar-hour{font-size:22px;line-height:1.5;font-weight:700;color:var(--burgundy)}
+.seminar-box .checkbox-label{font-size:15px;line-height:1.75;font-weight:600;color:#293e58}
+.seminar-box .checkbox-state{font-size:13px;font-weight:600;color:#536078}
+.seminar-box .checkbox-mark{width:24px;height:24px}
+.seminar-box .checkbox-label input{width:24px;height:24px}
+@media(max-width:1000px){.booking-hero .report-heading{font-size:28px}.booking-hero .hero-art{min-width:190px}}
+@media(max-width:760px){
+ .booking-hero{display:flex;flex-direction:column;gap:22px;min-height:0;padding:24px 23px}
+ .booking-hero .report-heading{font-size:26px;letter-spacing:-.4px}
+ .booking-hero .hero-copy{flex:initial;width:100%}
+ .booking-hero .hero-art{position:relative;top:auto;right:auto;flex:initial;align-self:center;width:190px;min-width:0;min-height:190px}
+ .booking-hero .hero-ticket{width:160px;right:15px;padding:16px}
+ .booking-hero .orbit{right:9px}.booking-hero .orbit-two{right:-6px}
+ .booking-hero .floating-seal{bottom:3px;right:-2px}
+ .consult-duration-note{font-size:14px;padding:11px 12px}
+ .seminar-box{padding:18px 14px;gap:10px}
+ .seminar-box h3{font-size:17px}
+ .seminar-box .seminar-date{font-size:18px}
+ .seminar-box .seminar-hour{font-size:21px}
+ .seminar-box .seminar-time{padding:12px}
+}
