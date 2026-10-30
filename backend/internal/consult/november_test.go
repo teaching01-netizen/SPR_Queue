@@ -32,9 +32,9 @@ func TestNovemberExactSchedule(t *testing.T) {
 		"Beginner/Math/2026-11-07":       {"13:00-14:00/4", "17:00-18:00/4", "18:00-20:00/8"},
 		"Beginner/Verbal/2026-11-07":     {"17:00-18:00/4", "18:00-20:00/7"},
 		"Beginner/Combined/2026-11-07":   {"14:00-15:30/5", "15:30-17:00/6"},
-		"High Level/Math/2026-11-06":     {"13:00-14:00/4", "17:00-18:00/4", "18:00-20:00/8"},
-		"High Level/Verbal/2026-11-06":   {"17:00-18:00/4", "18:00-20:00/7"},
-		"High Level/Combined/2026-11-06": {"14:00-15:30/5", "15:30-17:00/6"},
+		"High Level/Math/2026-11-06":     {"10:00-11:30/7", "11:55-13:25/7"},
+		"High Level/Verbal/2026-11-06":   {"10:00-11:30/7", "11:55-13:40/8"},
+		"High Level/Combined/2026-11-06": {"14:30-16:10/7", "16:10-18:10/8"},
 	}
 	if len(cfg.Rules) != len(expected) {
 		t.Fatal("wrong rule count")
@@ -58,7 +58,7 @@ func TestNovemberExactSchedule(t *testing.T) {
 			t.Fatal("mode changed", r.Mode)
 		}
 	}
-	if periodCount != 14 {
+	if periodCount != 13 {
 		t.Fatal(periodCount)
 	}
 	want := []Seminar{{"Math", "2026-11-07", "11:30", "13:00"}, {"Verbal", "2026-11-07", "13:00", "14:00"}}
@@ -106,7 +106,7 @@ func TestNovemberEveryPeriodCapacityAndDates(t *testing.T) {
 		{"Beginner", "Math", "2026-11-06", "P1030_1200"}, {"Beginner", "Verbal", "2026-11-06", "P1000_1100"}, {"Beginner", "Combined", "2026-11-06", "P1300_1430"},
 		{"High Level", "Math", "2026-11-07", "P1000_1130"}, {"High Level", "Combined", "2026-11-07", "P1430_1610"}, {"Beginner", "Math", "2026-08-15", "P1100"},
 		{"High Level", "Verbal", "2026-11-07", "P1700_1800"}, {"High Level", "Verbal", "2026-11-07", "P1800_2000"},
-		{"High Level", "Verbal", "2026-11-06", "P1000_1130"}, {"Beginner", "Math", "2026-11-07", "P1030_1200"},
+		{"High Level", "Verbal", "2026-11-06", "P1700_1800"}, {"Beginner", "Math", "2026-11-07", "P1030_1200"},
 	} {
 		i := testInput()
 		i.Level = scope.level
@@ -130,8 +130,8 @@ func TestNovemberConcurrentVariableCapacities(t *testing.T) {
 		cap                          int
 	}{
 		{"Beginner", "Math", "2026-11-07", "P1300_1400", 4}, {"Beginner", "Combined", "2026-11-07", "P1400_1530", 5},
-		{"Beginner", "Combined", "2026-11-07", "P1530_1700", 6}, {"High Level", "Verbal", "2026-11-06", "P1800_2000", 7},
-		{"High Level", "Math", "2026-11-06", "P1800_2000", 8},
+		{"Beginner", "Combined", "2026-11-07", "P1530_1700", 6}, {"High Level", "Math", "2026-11-06", "P1000_1130", 7},
+		{"High Level", "Verbal", "2026-11-06", "P1155_1340", 8},
 	}
 	for n, c := range cases {
 		i := testInput()
@@ -214,7 +214,7 @@ func TestLocalResetClearsAllEventsPreservesStaffAndReseeds(t *testing.T) {
 	}
 	var count int
 	s.DB.QueryRow(`SELECT COUNT(*) FROM periods`).Scan(&count)
-	if count != 14 {
+	if count != 13 {
 		t.Fatal("wrong reset catalog", count)
 	}
 	var afterHash, afterFingerprint string

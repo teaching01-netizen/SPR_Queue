@@ -47,7 +47,7 @@ bash scripts/prepare-railway.sh
 7. ตรวจ Review changes ว่าเหลือเพียงเว็บ ฐานข้อมูล และ volume ไม่มี Backup/bucket/cron แล้วจึง Deploy
 8. รอ deploymentสถานะSUCCESS ตรวจ /api/health, /#/book, /#/staff, /#/display และลิงก์ส่วนตัวจากมือถือ
 
-ตาราง production ฉบับใหม่รวม 76 slots ใน 14 ช่วงเวลา: High Level เฉพาะ 6 พฤศจิกายน, Beginner เฉพาะ 7 พฤศจิกายน 2026 สัมมนารวมวันที่ 7 พฤศจิกายน: Math 11:30–13:00, Verbal 13:00–14:00 ดูตารางใน SCHEDULE_UPDATE_TH.md โค้ดไม่ล้างข้อมูลเมื่อ Deploy ใหม่
+ตาราง production ฉบับใหม่รวม 82 slots ใน 13 ช่วงเวลา: High Level เฉพาะ 6 พฤศจิกายน ใช้เวลาเดิม และ Beginner เฉพาะ 7 พฤศจิกายน 2026 ใช้เวลาใหม่ สัมมนารวมวันที่ 7 พฤศจิกายน: Math 11:30–13:00, Verbal 13:00–14:00 ดูตารางใน SCHEDULE_UPDATE_TH.md โค้ดไม่ล้างข้อมูลเมื่อ Deploy ใหม่
 
 บัญชี7บัญชีสร้างเมื่อเริ่มฐานว่างครั้งแรก การDeployด้วยค่าเดิมไม่สุ่มรหัสใหม่ หากเปลี่ยนรหัส/สิทธิ์ภายหลังให้แก้ STAFF_ACCOUNTS_JSON แล้วเรียก /app/server -provision-staff เป็นงานดูแลครั้งเดียวด้วยตัวแปรproductionและฐานเดิมก่อนเปิดเว็บรุ่นใหม่ ไม่ใช้สคริปต์resetเทสกับรอบจริง
 
