@@ -79,7 +79,7 @@ func TestConfirmationTemplateAndMIME(t *testing.T) {
 		if strings.Contains(c.HTML, "สัมมนารวม") != (r.Level == "Beginner") {
 			t.Fatal("incorrect seminar scope")
 		}
-		if r.Subject == "Combined" && r.Level == "Beginner" && (!strings.Contains(c.HTML, "08:30 - 09:20") || !strings.Contains(c.HTML, "09:30 - 10:20")) {
+		if r.Subject == "Combined" && r.Level == "Beginner" && (!strings.Contains(c.HTML, "13:00 - 14:00") || !strings.Contains(c.HTML, "11:30 - 13:00")) {
 			t.Fatal("missing either seminar")
 		}
 		if !strings.Contains(c.HTML, ">Check Queue Status</a>") {

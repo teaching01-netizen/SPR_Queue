@@ -15,16 +15,10 @@
       "mode": "On-site",
       "periods": [
         {
-          "id": "P1030_1200",
-          "start": "10:30",
-          "end": "12:00",
-          "capacity": 7
-        },
-        {
-          "id": "P1625_1700",
-          "start": "16:25",
-          "end": "17:00",
-          "capacity": 3
+          "id": "P1300_1400",
+          "start": "13:00",
+          "end": "14:00",
+          "capacity": 4
         },
         {
           "id": "P1700_1800",
@@ -33,16 +27,10 @@
           "capacity": 4
         },
         {
-          "id": "P1800_1900",
+          "id": "P1800_2000",
           "start": "18:00",
-          "end": "19:00",
-          "capacity": 4
-        },
-        {
-          "id": "P1900_2000",
-          "start": "19:00",
           "end": "20:00",
-          "capacity": 4
+          "capacity": 8
         }
       ]
     },
@@ -53,34 +41,16 @@
       "mode": "On-site",
       "periods": [
         {
-          "id": "P0930_1000",
-          "start": "09:30",
-          "end": "10:00",
-          "capacity": 2
-        },
-        {
-          "id": "P1000_1100",
-          "start": "10:00",
-          "end": "11:00",
-          "capacity": 4
-        },
-        {
-          "id": "P1100_1215",
-          "start": "11:00",
-          "end": "12:15",
-          "capacity": 5
-        },
-        {
-          "id": "P1635_1700",
-          "start": "16:35",
-          "end": "17:00",
-          "capacity": 2
-        },
-        {
           "id": "P1700_1800",
           "start": "17:00",
           "end": "18:00",
           "capacity": 4
+        },
+        {
+          "id": "P1800_2000",
+          "start": "18:00",
+          "end": "20:00",
+          "capacity": 7
         }
       ]
     },
@@ -91,16 +61,16 @@
       "mode": "On-site",
       "periods": [
         {
-          "id": "P1300_1430",
-          "start": "13:00",
-          "end": "14:30",
-          "capacity": 7
+          "id": "P1400_1530",
+          "start": "14:00",
+          "end": "15:30",
+          "capacity": 5
         },
         {
-          "id": "P1445_1615",
-          "start": "14:45",
-          "end": "16:15",
-          "capacity": 7
+          "id": "P1530_1700",
+          "start": "15:30",
+          "end": "17:00",
+          "capacity": 6
         }
       ]
     },
@@ -111,16 +81,22 @@
       "mode": "Online via Zoom",
       "periods": [
         {
-          "id": "P1000_1130",
-          "start": "10:00",
-          "end": "11:30",
-          "capacity": 7
+          "id": "P1300_1400",
+          "start": "13:00",
+          "end": "14:00",
+          "capacity": 4
         },
         {
-          "id": "P1155_1325",
-          "start": "11:55",
-          "end": "13:25",
-          "capacity": 7
+          "id": "P1700_1800",
+          "start": "17:00",
+          "end": "18:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1800_2000",
+          "start": "18:00",
+          "end": "20:00",
+          "capacity": 8
         }
       ]
     },
@@ -131,16 +107,16 @@
       "mode": "Online via Zoom",
       "periods": [
         {
-          "id": "P1000_1130",
-          "start": "10:00",
-          "end": "11:30",
-          "capacity": 7
+          "id": "P1700_1800",
+          "start": "17:00",
+          "end": "18:00",
+          "capacity": 4
         },
         {
-          "id": "P1155_1340",
-          "start": "11:55",
-          "end": "13:40",
-          "capacity": 8
+          "id": "P1800_2000",
+          "start": "18:00",
+          "end": "20:00",
+          "capacity": 7
         }
       ]
     },
@@ -151,52 +127,32 @@
       "mode": "Online via Zoom",
       "periods": [
         {
-          "id": "P1430_1610",
-          "start": "14:30",
-          "end": "16:10",
-          "capacity": 7
+          "id": "P1400_1530",
+          "start": "14:00",
+          "end": "15:30",
+          "capacity": 5
         },
         {
-          "id": "P1610_1810",
-          "start": "16:10",
-          "end": "18:10",
-          "capacity": 8
-        }
-      ]
-    },
-    {
-      "level": "High Level",
-      "subject": "Verbal",
-      "date": "2026-11-07",
-      "mode": "On-site",
-      "periods": [
-        {
-          "id": "P1800_1900",
-          "start": "18:00",
-          "end": "19:00",
-          "capacity": 4
-        },
-        {
-          "id": "P1900_2000",
-          "start": "19:00",
-          "end": "20:00",
-          "capacity": 4
+          "id": "P1530_1700",
+          "start": "15:30",
+          "end": "17:00",
+          "capacity": 6
         }
       ]
     }
   ],
   "seminars": [
     {
-      "subject": "Verbal",
-      "date": "2026-11-07",
-      "start": "08:30",
-      "end": "09:20"
-    },
-    {
       "subject": "Math",
       "date": "2026-11-07",
-      "start": "09:30",
-      "end": "10:20"
+      "start": "11:30",
+      "end": "13:00"
+    },
+    {
+      "subject": "Verbal",
+      "date": "2026-11-07",
+      "start": "13:00",
+      "end": "14:00"
     }
   ]
 }

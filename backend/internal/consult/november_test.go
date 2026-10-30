@@ -29,13 +29,12 @@ func novemberService(t *testing.T) *Service {
 func TestNovemberExactSchedule(t *testing.T) {
 	cfg := novemberConfig(t)
 	expected := map[string][]string{
-		"Beginner/Math/2026-11-07":       {"10:30-12:00/7", "16:25-17:00/3", "17:00-18:00/4", "18:00-19:00/4", "19:00-20:00/4"},
-		"Beginner/Verbal/2026-11-07":     {"09:30-10:00/2", "10:00-11:00/4", "11:00-12:15/5", "16:35-17:00/2", "17:00-18:00/4"},
-		"Beginner/Combined/2026-11-07":   {"13:00-14:30/7", "14:45-16:15/7"},
-		"High Level/Math/2026-11-06":     {"10:00-11:30/7", "11:55-13:25/7"},
-		"High Level/Verbal/2026-11-06":   {"10:00-11:30/7", "11:55-13:40/8"},
-		"High Level/Combined/2026-11-06": {"14:30-16:10/7", "16:10-18:10/8"},
-		"High Level/Verbal/2026-11-07":   {"18:00-19:00/4", "19:00-20:00/4"},
+		"Beginner/Math/2026-11-07":       {"13:00-14:00/4", "17:00-18:00/4", "18:00-20:00/8"},
+		"Beginner/Verbal/2026-11-07":     {"17:00-18:00/4", "18:00-20:00/7"},
+		"Beginner/Combined/2026-11-07":   {"14:00-15:30/5", "15:30-17:00/6"},
+		"High Level/Math/2026-11-06":     {"13:00-14:00/4", "17:00-18:00/4", "18:00-20:00/8"},
+		"High Level/Verbal/2026-11-06":   {"17:00-18:00/4", "18:00-20:00/7"},
+		"High Level/Combined/2026-11-06": {"14:00-15:30/5", "15:30-17:00/6"},
 	}
 	if len(cfg.Rules) != len(expected) {
 		t.Fatal("wrong rule count")
@@ -59,10 +58,10 @@ func TestNovemberExactSchedule(t *testing.T) {
 			t.Fatal("mode changed", r.Mode)
 		}
 	}
-	if periodCount != 20 {
+	if periodCount != 14 {
 		t.Fatal(periodCount)
 	}
-	want := []Seminar{{"Verbal", "2026-11-07", "08:30", "09:20"}, {"Math", "2026-11-07", "09:30", "10:20"}}
+	want := []Seminar{{"Math", "2026-11-07", "11:30", "13:00"}, {"Verbal", "2026-11-07", "13:00", "14:00"}}
 	if !reflect.DeepEqual(cfg.Seminars, want) {
 		t.Fatal("wrong seminar schedule", cfg.Seminars)
 	}
@@ -71,6 +70,10 @@ func TestNovemberExactSchedule(t *testing.T) {
 	bad.Seminars[0].End = "08:00"
 	if bad.Validate() == nil {
 		t.Fatal("invalid seminar time accepted")
+	}
+	production, err := LoadConfig("../../config/event.production.json")
+	if err != nil || production.Event.Sample || !reflect.DeepEqual(production.Rules, cfg.Rules) || !reflect.DeepEqual(production.Seminars, cfg.Seminars) {
+		t.Fatal("production and local schedules differ", err)
 	}
 }
 func TestNovemberEveryPeriodCapacityAndDates(t *testing.T) {
@@ -102,6 +105,8 @@ func TestNovemberEveryPeriodCapacityAndDates(t *testing.T) {
 	for _, scope := range []struct{ level, subject, date, period string }{
 		{"Beginner", "Math", "2026-11-06", "P1030_1200"}, {"Beginner", "Verbal", "2026-11-06", "P1000_1100"}, {"Beginner", "Combined", "2026-11-06", "P1300_1430"},
 		{"High Level", "Math", "2026-11-07", "P1000_1130"}, {"High Level", "Combined", "2026-11-07", "P1430_1610"}, {"Beginner", "Math", "2026-08-15", "P1100"},
+		{"High Level", "Verbal", "2026-11-07", "P1700_1800"}, {"High Level", "Verbal", "2026-11-07", "P1800_2000"},
+		{"High Level", "Verbal", "2026-11-06", "P1000_1130"}, {"Beginner", "Math", "2026-11-07", "P1030_1200"},
 	} {
 		i := testInput()
 		i.Level = scope.level
@@ -124,9 +129,9 @@ func TestNovemberConcurrentVariableCapacities(t *testing.T) {
 		level, subject, date, period string
 		cap                          int
 	}{
-		{"Beginner", "Verbal", "2026-11-07", "P0930_1000", 2}, {"Beginner", "Math", "2026-11-07", "P1625_1700", 3},
-		{"Beginner", "Verbal", "2026-11-07", "P1100_1215", 5}, {"High Level", "Math", "2026-11-06", "P1000_1130", 7},
-		{"High Level", "Verbal", "2026-11-06", "P1155_1340", 8}, {"High Level", "Combined", "2026-11-06", "P1610_1810", 8},
+		{"Beginner", "Math", "2026-11-07", "P1300_1400", 4}, {"Beginner", "Combined", "2026-11-07", "P1400_1530", 5},
+		{"Beginner", "Combined", "2026-11-07", "P1530_1700", 6}, {"High Level", "Verbal", "2026-11-06", "P1800_2000", 7},
+		{"High Level", "Math", "2026-11-06", "P1800_2000", 8},
 	}
 	for n, c := range cases {
 		i := testInput()
@@ -191,7 +196,7 @@ func TestLocalResetClearsAllEventsPreservesStaffAndReseeds(t *testing.T) {
 	s.MailEnabled = true
 	i := testInput()
 	i.Date = "2026-11-07"
-	i.PeriodID = "P1030_1200"
+	i.PeriodID = "P1300_1400"
 	book(t, s, i)
 	var fingerprint, hash string
 	var revision int64
@@ -209,7 +214,7 @@ func TestLocalResetClearsAllEventsPreservesStaffAndReseeds(t *testing.T) {
 	}
 	var count int
 	s.DB.QueryRow(`SELECT COUNT(*) FROM periods`).Scan(&count)
-	if count != 20 {
+	if count != 14 {
 		t.Fatal("wrong reset catalog", count)
 	}
 	var afterHash, afterFingerprint string

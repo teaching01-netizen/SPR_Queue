@@ -21,7 +21,7 @@ func cleanupService(t *testing.T) *Service {
 	return s
 }
 func cleanupInput() Input {
-	return Input{Email: "parent@example.com", Nickname: "Test Cleanup", School: "School", Level: "Beginner", Subject: "Math", Date: "2026-11-07", PeriodID: "P1030_1200", Questions: []string{"one", "two"}, SeminarConfirmed: true}
+	return Input{Email: "parent@example.com", Nickname: "Test Cleanup", School: "School", Level: "Beginner", Subject: "Math", Date: "2026-11-07", PeriodID: "P1800_2000", Questions: []string{"one", "two"}, SeminarConfirmed: true}
 }
 func finishCleanup(t *testing.T, s *Service, c Confirmation) Booking {
 	b := transition(t, s, c.Booking.ID, "Waiting")
@@ -45,7 +45,7 @@ func TestArchiveCompletedPreservesHistoryCapacityAndToken(t *testing.T) {
 	if v, err := s.Track(testCtx, c.Token); err != nil || v.Status != "Completed" {
 		t.Fatal("lost tracking", err)
 	}
-	for n := 0; n < 6; n++ {
+	for n := 0; n < 7; n++ {
 		book(t, s, cleanupInput())
 	}
 	if _, err = s.Book(testCtx, "full-after-archive", cleanupInput()); !codeIs(err, "PERIOD_FULL") {

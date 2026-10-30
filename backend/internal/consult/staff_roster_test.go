@@ -38,7 +38,7 @@ func TestSevenLocalStaffAndSessionPreservation(t *testing.T) {
 	}
 	i := testInput()
 	i.Date = "2026-11-07"
-	i.PeriodID = "P1030_1200"
+	i.PeriodID = "P1800_2000"
 	booking := book(t, s, i).Booking
 	if err = a.SyncLocalStaff(testCtx); err != nil {
 		t.Fatal(err)
@@ -113,10 +113,10 @@ func TestAllSevenStaffHTTPCheckInAndAudit(t *testing.T) {
 	for range localStaffNames {
 		i := testInput()
 		i.Date = "2026-11-07"
-		i.PeriodID = "P1030_1200"
+		i.PeriodID = "P1800_2000"
 		ids = append(ids, book(t, s, i).Booking.ID)
 	}
-	assign(t, s, Scope{"Beginner", "2026-11-07", "P1030_1200", "Math"}, ids...)
+	assign(t, s, Scope{"Beginner", "2026-11-07", "P1800_2000", "Math"}, ids...)
 	handler := NewHTTP(s, a, []string{"http://localhost:8080"}, "").Handler()
 	send := func(path string, in any, cookie *http.Cookie, csrf string) *httptest.ResponseRecorder {
 		var buf bytes.Buffer

@@ -7,7 +7,7 @@ func TestTrackRemainingQueueFollowsCurrentOrder(t *testing.T) {
 	ids := []string{}
 	tokens := []string{}
 	for n := 0; n < 5; n++ {
-		b := book(t, s, Input{Email: "parent@example.com", Nickname: "Private", School: "School", Level: "Beginner", Subject: "Math", Date: "2026-11-07", PeriodID: "P1030_1200", Questions: []string{"one", "two"}, SeminarConfirmed: true})
+		b := book(t, s, Input{Email: "parent@example.com", Nickname: "Private", School: "School", Level: "Beginner", Subject: "Math", Date: "2026-11-07", PeriodID: "P1800_2000", Questions: []string{"one", "two"}, SeminarConfirmed: true})
 		ids = append(ids, b.Booking.ID)
 		tokens = append(tokens, b.Token)
 	}
@@ -27,7 +27,7 @@ func TestTrackRemainingQueueFollowsCurrentOrder(t *testing.T) {
 		transition(t, s, id, "Waiting")
 	}
 	own(nil, "awaiting-order")
-	scope := Scope{"Beginner", "2026-11-07", "P1030_1200", "Math"}
+	scope := Scope{"Beginner", "2026-11-07", "P1800_2000", "Math"}
 	assign(t, s, scope, ids...)
 	transition(t, s, ids[0], "Calling")
 	own(value(4), "ready")
@@ -58,11 +58,11 @@ func TestRemainingAcrossPeriodsAndCombinedHandoff(t *testing.T) {
 	makeBooking := func(id, subject, period string, order int) Booking {
 		return Booking{ID: id, Input: Input{Level: "Beginner", Subject: subject, Date: "2026-11-07", PeriodID: period}, QueueNo: code(id), CurrentSubject: "Math", Status: "Waiting", CheckedInAt: &check, Orders: map[string]int{"Math": order}}
 	}
-	live := makeBooking("live", "Math", "P1030_1200", 1)
+	live := makeBooking("live", "Math", "P1300_1400", 1)
 	live.Status = "Calling"
 	live.Stages = map[string]Stage{"Math": {CalledAt: "2026-11-07T03:00:00Z"}}
-	before := makeBooking("ready", "Math", "P1030_1200", 2)
-	own := makeBooking("combined", "Combined", "P1300_1430", 1)
+	before := makeBooking("ready", "Math", "P1300_1400", 2)
+	own := makeBooking("combined", "Combined", "P1400_1530", 1)
 	bookings := []Booking{live, before, own}
 	n, state := s.queuesUntilTurn(bookings, own)
 	if n == nil || *n != 2 || state != "ready" {
@@ -89,7 +89,7 @@ func TestRemainingAcrossPeriodsAndCombinedHandoff(t *testing.T) {
 	if n == nil || *n != 1 || state != "ready" {
 		t.Fatal("combined new room")
 	}
-	own = makeBooking("old-period", "Math", "P1030_1200", 1)
+	own = makeBooking("old-period", "Math", "P1300_1400", 1)
 	live = makeBooking("later", "Math", "P1700_1800", 1)
 	live.Status = "Completed"
 	live.Stages = map[string]Stage{"Math": {CalledAt: "2026-11-07T10:00:00Z", EndedAt: "2026-11-07T10:10:00Z"}}

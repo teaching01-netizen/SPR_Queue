@@ -51,12 +51,12 @@ func TestDisplayUpcomingOrderAndPrivacy(t *testing.T) {
 func TestUpcomingCombinedRoomAndPeriodScope(t *testing.T) {
 	s := &Service{Config: novemberConfig(t)}
 	checked := "checked"
-	period := "P1700_1800"
+	period := "P1800_2000"
 	code := func(v string) *string { return &v }
 	b := func(q, subject, status, room, p string, order int) Booking {
 		return Booking{Input: Input{Level: "Beginner", Subject: subject, Date: "2026-11-07", PeriodID: p}, QueueNo: code(q), CurrentSubject: room, Status: status, CheckedInAt: &checked, Orders: map[string]int{room: order}}
 	}
-	bookings := []Booking{b("B-V-010", "Verbal", "Calling", "Verbal", period, 1), b("B-MV-003", "Combined", "Waiting", "Math", "P1300_1430", 1), b("B-V-002", "Verbal", "Waiting", "Verbal", period, 2), b("B-V-001", "Verbal", "Waiting", "Verbal", period, 1), b("B-V-004", "Verbal", "Waiting", "Verbal", period, 0), b("B-V-005", "Verbal", "Waiting", "Verbal", "P1000_1100", 1)}
+	bookings := []Booking{b("B-V-010", "Verbal", "Calling", "Verbal", period, 1), b("B-MV-003", "Combined", "Waiting", "Math", "P1400_1530", 1), b("B-V-002", "Verbal", "Waiting", "Verbal", period, 2), b("B-V-001", "Verbal", "Waiting", "Verbal", period, 1), b("B-V-004", "Verbal", "Waiting", "Verbal", period, 0), b("B-V-005", "Verbal", "Waiting", "Verbal", "P1700_1800", 1)}
 	v := s.upcoming(bookings, "Beginner", "2026-11-07", "Verbal")
 	if len(v) != 2 || !reflect.DeepEqual([]string{v[0].QueueNo, v[1].QueueNo}, []string{"B-V-001", "B-V-002"}) {
 		t.Fatal("wrong subject, period or order", v)

@@ -29,6 +29,6 @@ export function periodsFor(level: Level, date: string, stream?: 'Math' | 'Verbal
 export const periodLabel = (id: string, level: Level, date: string) => { const p = periodsFor(level, date).find(p => p.id === id); return p ? `${p.start}–${p.end}` : '—'; };
 export const subjectLabel = (id: Subject) => SUBJECTS.find(s => s.id === id)?.label ?? id;
 export const STATUS_LABELS = { Booked: 'รอเช็กอิน', Waiting: 'รอเรียกคิว', Calling: 'กำลังเรียก', Serving: 'กำลังปรึกษา', Completed: 'เสร็จสิ้น', 'No-show': 'ไม่มาเข้าคิว', Cancelled: 'ยกเลิก' };
-export const DEFAULT_SCOPE: QueueScope = { level: 'Beginner', date: '2026-11-07', periodId: 'P1030_1200', stream: 'Math' };
+export const DEFAULT_SCOPE: QueueScope = { level: 'Beginner', date: '2026-11-07', periodId: 'P1300_1400', stream: 'Math' };
 
 export function capacityFor(level:Level,subject:Subject,date:string,periodId:string) { if (!liveRules) return 4; return liveRules.find(r=>r.level===level && r.subject===subject && r.date===date)?.periods.find(p=>p.id===periodId)?.capacity ?? 0; }
