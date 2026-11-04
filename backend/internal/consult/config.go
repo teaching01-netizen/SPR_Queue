@@ -3,7 +3,6 @@ package consult
 import (
 	"encoding/json"
 	"fmt"
-	"net/mail"
 	"os"
 	"regexp"
 	"strings"
@@ -129,8 +128,8 @@ func (c Config) Normalize(i Input) (Input, Rule, Period, error) {
 	if err != nil {
 		return i, r, p, err
 	}
-	a, err := mail.ParseAddress(i.Email)
-	if err != nil || a.Address != i.Email || a.Name != "" || strings.ContainsAny(i.Email, "\r\n") || len(i.Email) > 254 || i.Nickname == "" || i.School == "" || utf8.RuneCountInString(i.Nickname) > 80 || utf8.RuneCountInString(i.School) > 160 || len(i.Wcode) > 40 || len(i.Questions) < 2 || len(i.Questions) > 3 {
+	i, err = normalizeStudentDetails(i)
+	if err != nil || len(i.Questions) < 2 || len(i.Questions) > 3 {
 		return i, r, p, problem("VALIDATION_ERROR", "กรุณากรอกข้อมูลผู้ปกครองและนักเรียนให้ถูกต้อง", 400)
 	}
 	// Normalize an owned slice; callers may reuse an Input across concurrent requests.

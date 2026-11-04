@@ -114,6 +114,13 @@ func TestRegistrationWorkbookAllStatusesAndSafeCells(t *testing.T) {
 	legacy.ID = "legacy-fixture"
 	legacy.PeriodID = "OLD_PERIOD"
 	bookings = append(bookings, legacy)
+	keptDone := bookings[4]
+	keptDone.ID = "completed-visible"
+	keptDone.ArchivedAt = ""
+	keptDone.ArchivedBy = ""
+	bookings = append(bookings, keptDone)
+	bookings[5].Nickname = "Tar"
+	bookings[5].Wcode = "W00001"
 	before := append([]Booking(nil), bookings...)
 	data, err := registrationWorkbook(cfg, bookings)
 	if err != nil {
@@ -130,8 +137,11 @@ func TestRegistrationWorkbookAllStatusesAndSafeCells(t *testing.T) {
 	if strings.Contains(all, "DO-NOT-EXPORT") || strings.Contains(all, "<f>") || strings.Contains(all, "TargetMode=\"External\"") {
 		t.Fatal("private token, formula or external relationship exported")
 	}
+	if strings.Contains(all, "fixture-Cancelled") || strings.Contains(all, "fixture-Completed") || strings.Contains(all, "W00001") || strings.Contains(all, ">Tar<") {
+		t.Fatal("removed test booking exported")
+	}
 	rows := exportRows(t, parts["xl/worksheets/sheet1.xml"])
-	if len(rows) != len(bookings)+1 || len(rows[0]) != 39 {
+	if len(rows) != len(bookings)-1 || len(rows[0]) != 39 {
 		t.Fatal("missing records/columns", len(rows), len(rows[0]))
 	}
 	for _, r := range rows[1:] {
@@ -161,7 +171,7 @@ func TestRegistrationWorkbookAllStatusesAndSafeCells(t *testing.T) {
 	for _, r := range summary[1:] {
 		if r[0] == "2026-11-07" && r[1] == "Beginner" && r[2] == "Math" && r[3] == "18:00 - 20:00" {
 			found = true
-			if !reflect.DeepEqual(r[5:], []string{"8", "7", "6", "7", "1", "1", "1", "1", "1", "1", "1", "1"}) {
+			if !reflect.DeepEqual(r[5:], []string{"8", "6", "6", "1", "1", "1", "1", "1", "1"}) {
 				t.Fatal("summary counts", r)
 			}
 		}
@@ -172,7 +182,7 @@ func TestRegistrationWorkbookAllStatusesAndSafeCells(t *testing.T) {
 	if !strings.Contains(parts["xl/worksheets/sheet1.xml"], `t="n"`) {
 		t.Fatal("queue order must be numeric")
 	}
-	if !strings.Contains(parts["xl/worksheets/sheet1.xml"], `state="frozen"`) || !strings.Contains(parts["xl/worksheets/sheet1.xml"], `<autoFilter ref="A1:AM11"`) {
+	if !strings.Contains(parts["xl/worksheets/sheet1.xml"], `state="frozen"`) || !strings.Contains(parts["xl/worksheets/sheet1.xml"], `<autoFilter ref="A1:AM10"`) {
 		t.Fatal("missing freeze/filter")
 	}
 	if path := os.Getenv("EXPORT_FIXTURE_PATH"); path != "" {
@@ -259,11 +269,11 @@ func TestHTTPStaffExportAllRecordsAndAuthorization(t *testing.T) {
 	}
 	parts := exportParts(t, w.Body.Bytes())
 	rows := exportRows(t, parts["xl/worksheets/sheet1.xml"])
-	if len(rows) != 5 {
+	if len(rows) != 3 {
 		t.Fatal("filters omitted records", len(rows))
 	}
 	for _, body := range parts {
-		if strings.Contains(body, hidden.Booking.ID) || strings.Contains(body, done.Token) || strings.Contains(body, cancelled.Token) {
+		if strings.Contains(body, hidden.Booking.ID) || strings.Contains(body, done.Booking.ID) || strings.Contains(body, cancelled.Booking.ID) || strings.Contains(body, done.Token) || strings.Contains(body, cancelled.Token) {
 			t.Fatal("other event or private token leaked")
 		}
 	}

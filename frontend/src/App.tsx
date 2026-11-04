@@ -116,6 +116,31 @@ function canEditBooking(b: Booking) {
   return ['Booked', 'Waiting', 'No-show', 'Cancelled'].includes(b.status)
     && !Object.values(b.stages).some(s => s?.startedAt || s?.endedAt);
 }
+type StudentValues = Parameters<typeof api.editStudentDetails>[1];
+function StudentDetailsModal({booking:b,busy,save,close}:{booking:Booking;busy:boolean;save:(values:StudentValues)=>Promise<void>;close:()=>void}) {
+  const [wcode,setWcode]=useState(b.wcode);
+  const [nickname,setNickname]=useState(b.nickname);
+  const [school,setSchool]=useState(b.school);
+  const [email,setEmail]=useState(b.email);
+  const [error,setError]=useState('');
+  async function submit(e:FormEvent) {
+    e.preventDefault();setError('');
+    try { await save({wcode,nickname,school,email,expectedRevision:b.revision??-1}); }
+    catch(e) {setError(message(e));}
+  }
+  return <Modal title="แก้ข้อมูลผู้ลงทะเบียน" close={close}>
+    <p>{b.queueNo||'ยังไม่จัดคิว'} · {b.nickname} · {subjectLabel(b.subject)}</p>
+    <form className="booking-edit-form" onSubmit={submit}>
+      <label htmlFor="edit-student-wcode">Wcode (ถ้ามี)<input id="edit-student-wcode" value={wcode} maxLength={40} disabled={busy} onChange={e=>setWcode(e.target.value)} /></label>
+      <label htmlFor="edit-student-nickname">ชื่อเล่นนักเรียน<input id="edit-student-nickname" value={nickname} required maxLength={80} disabled={busy} onChange={e=>setNickname(e.target.value)} /></label>
+      <label htmlFor="edit-student-school">โรงเรียน<input id="edit-student-school" value={school} required maxLength={160} disabled={busy} onChange={e=>setSchool(e.target.value)} /></label>
+      <label htmlFor="edit-student-email">Email ผู้ปกครอง<input id="edit-student-email" type="email" value={email} required maxLength={254} disabled={busy} onChange={e=>setEmail(e.target.value)} /></label>
+      <Notice>แก้ข้อมูลในรายการเดิม คิว วัน เวลา และลิงก์ติดตามเดิมยังใช้ได้ · การบันทึกนี้ไม่สั่งส่งอีเมลยืนยันซ้ำ</Notice>
+      {error&&<Notice error>{error}</Notice>}
+      <button type="submit" className="btn primary wide" disabled={busy||!nickname.trim()||!school.trim()||!email.trim()}>{busy?'กำลังบันทึก…':'บันทึกข้อมูลผู้ลงทะเบียน'}</button>
+    </form>
+  </Modal>;
+}
 type EditValues = Parameters<typeof api.editBooking>[1];
 function BookingEditModal({ booking: b, busy, save, close }: { booking: Booking; busy: boolean; save: (values: EditValues) => Promise<void>; close: () => void }) {
   const [subject, setSubject] = useState(b.subject);
@@ -175,7 +200,7 @@ function StaffPage({ user }: { user: StaffUser }) {
       link.href = url; link.download = filename;
       document.body.appendChild(link); link.click(); link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 15000);
-      setNotice('ดาวน์โหลด Excel ข้อมูลทั้งหมดแล้ว รวมรายการยกเลิกและรายการจบแล้ว · ไม่ใช้ตัวกรองบนหน้าจอ');
+      setNotice('ดาวน์โหลด Excel แล้ว · เฉพาะรายการที่ยังแสดงอยู่ ไม่รวมรายการยกเลิกหรือเก็บออกแล้ว');
     } catch (e) { setError(message(e)); }
     finally { exportRef.current = false; setExporting(false); }
   }
@@ -184,6 +209,7 @@ function StaffPage({ user }: { user: StaffUser }) {
   const [cancel, setCancel] = useState<Booking | null>(null); const [reason, setReason] = useState('');
   const [startChoice, setStartChoice] = useState<Booking | null>(null);
   const [edit, setEdit] = useState<Booking | null>(null);
+  const [studentEdit,setStudentEdit] = useState<Booking|null>(null);
   const [restore, setRestore] = useState<Booking | null>(null);
   const [restoreError, setRestoreError] = useState('');
   const [archivedOnly,setArchivedOnly] = useState(false);
@@ -269,11 +295,19 @@ function StaffPage({ user }: { user: StaffUser }) {
   }
   function managementButtons(b: Booking) {
     return <>
+      <button className="mini-btn" disabled={inactive || hasDraft} onClick={()=>{setError('');setDetailId(null);setStudentEdit(b);}}>แก้ข้อมูลผู้ลงทะเบียน</button>
       {canEditBooking(b) && <button className="mini-btn" disabled={inactive || hasDraft} onClick={() => { setError(''); setDetailId(null); setEdit(b); }}>แก้วัน / เวลา / วิชา</button>}
       {['Booked', 'Waiting', 'Calling', 'No-show'].includes(b.status) && <button className="mini-btn" disabled={inactive || hasDraft} onClick={() => action(b, 'Cancelled')}>เอาออก / ยกเลิก</button>}
       {b.status === 'Completed' && <button className="mini-btn" disabled={inactive || hasDraft} onClick={() => void run(() => api.archiveCompleted(b.id,!b.archivedAt,b.revision ?? -1),b.archivedAt ? 'นำรายการกลับมาแสดงแล้ว · สถานะยังเป็นเสร็จสิ้น' : 'เก็บรายการแล้ว · เปิดดูได้ในแท็บรายการจบแล้ว')}>{b.archivedAt ? 'นำกลับมาแสดง' : 'เก็บรายการจบแล้ว'}</button>}
       {canManageTestData && <button className="mini-btn danger" disabled={inactive || hasDraft} onClick={() => {setError('');setDetailId(null);setDeleteTest(b);setDeleteConfirmed(false);}}>ลบข้อมูลทดสอบ</button>}
     </>;
+  }
+  async function saveStudentDetails(values:StudentValues) {
+    if (!studentEdit || busyRef.current) return;
+    busyRef.current=true;setBusy(true);setError('');setNotice('');
+    try {await api.editStudentDetails(studentEdit.id,values);await refresh();setStudentEdit(null);setSearch('');clearDraft();setNotice('แก้ข้อมูลผู้ลงทะเบียนแล้ว · ใช้คิวและลิงก์ติดตามเดิม');}
+    catch(e) {await refresh();throw e;}
+    finally {busyRef.current=false;setBusy(false);}
   }
   async function saveEdit(values: EditValues) {
     if (!edit || busyRef.current) return;
@@ -324,7 +358,7 @@ function StaffPage({ user }: { user: StaffUser }) {
   const periodText = (b: Booking) => { const text = periodLabel(b.periodId, b.level, b.date); return text === '—' ? `รอบเดิม ${b.periodId}` : text; };
   const nameCell = (b: Booking) => <button className="student-btn" onClick={() => setDetailId(b.id)}><strong>{b.queueNo || 'ยังไม่จัดคิว'}</strong><span>{b.nickname} <small>· {b.wcode || 'ไม่มี Wcode'}</small></span></button>;
   return <>
-    <Header eyebrow="WARWICK OPERATIONS" title="Staff Dashboard" description="เช็กอินจากทุกช่วงเวลา แล้วเปิดรอบเพื่อจัดคิวและเรียกเข้าห้อง"><div className="header-actions staff-header-actions"><button className="btn secondary" onClick={() => void refresh()}><RefreshCw size={16} />รีเฟรช</button><button className="btn secondary staff-export-btn" disabled={exporting || busy} aria-busy={exporting} title="ดาวน์โหลดผู้ลงทะเบียนทั้งหมด ทุกวัน ทุกวิชา รวมรายการยกเลิกและรายการจบแล้ว" onClick={() => void exportExcel()}><Download size={16} />{exporting ? 'กำลัง Export…' : 'Export Excel'}</button>{canManageTestData && <button className="btn secondary" disabled={inactive} onClick={() => {setError('');setClearText('');setClearTest({revision:packet?.revision ?? -1,count:bookings.length});}}>ล้างงานทดสอบนี้</button>}</div></Header>
+    <Header eyebrow="WARWICK OPERATIONS" title="Staff Dashboard" description="เช็กอินจากทุกช่วงเวลา แล้วเปิดรอบเพื่อจัดคิวและเรียกเข้าห้อง"><div className="header-actions staff-header-actions"><button className="btn secondary" onClick={() => void refresh()}><RefreshCw size={16} />รีเฟรช</button><button className="btn secondary staff-export-btn" disabled={exporting || busy} aria-busy={exporting} title="ดาวน์โหลดผู้ลงทะเบียนทุกวัน ทุกวิชา เฉพาะที่ยังแสดงอยู่ ไม่รวมรายการยกเลิกหรือเก็บออกแล้ว" onClick={() => void exportExcel()}><Download size={16} />{exporting ? 'กำลัง Export…' : 'Export Excel'}</button>{canManageTestData && <button className="btn secondary" disabled={inactive} onClick={() => {setError('');setClearText('');setClearTest({revision:packet?.revision ?? -1,count:bookings.length});}}>ล้างงานทดสอบนี้</button>}</div></Header>
     <div className="staff-view-tabs" role="group" aria-label="หน้าทำงาน Staff">
       <button aria-pressed={view === 'checkin'} className={view === 'checkin' ? 'active' : ''} onClick={() => { setView('checkin'); setStatusFilter('All'); clearDraft(); }}><CheckCheck size={18} />เช็กอิน · รวมทุกช่วงเวลา</button>
       <button aria-pressed={view === 'queue'} className={view === 'queue' ? 'active' : ''} onClick={() => { setView('queue'); setStatusFilter('All'); updateScope({}); }}><ListOrdered size={18} />จัดคิว / เรียกคิว</button>
@@ -381,6 +415,7 @@ function StaffPage({ user }: { user: StaffUser }) {
     {detail && <Modal title="รายละเอียดการจอง" close={() => setDetailId(null)}><div className="detail-heading"><strong>{detail.nickname}</strong><Badge status={detail.status} /></div><StageProgress booking={detail} /><dl className="detail-list"><div><dt>รหัสคิว</dt><dd>{detail.queueNo || 'ยังไม่จัดคิว'}</dd></div><div><dt>ระดับ / วิชา</dt><dd>{detail.level} · {subjectLabel(detail.subject)}</dd></div><div><dt>รอบที่จอง</dt><dd>{DATE_LABELS[detail.date] ?? detail.date} · {periodText(detail)}</dd></div><div><dt>โรงเรียน</dt><dd>{detail.school}</dd></div><div><dt>Email</dt><dd>{detail.email}</dd></div><div><dt>สถานะอีเมล</dt><dd>{detail.emailStatus === 'Sent' ? 'Sent · ส่งแล้ว' : detail.emailStatus === 'Pending' ? 'Pending · รอส่ง' : detail.emailStatus === 'Failed' ? 'Failed · ส่งไม่สำเร็จ' : 'ยังไม่ได้ตั้งค่าการส่ง'}</dd></div><div><dt>Wcode</dt><dd>{detail.wcode || '—'}</dd></div><div><dt>รูปแบบ</dt><dd>{detail.mode}</dd></div></dl>{detail.status === 'Cancelled' && <Notice>เหตุผลยกเลิก: {detail.cancellationReason}</Notice>}<StaffTrackingLink key={detail.id} bookingId={detail.id}/><div className="row-actions">{managementButtons(detail)}{detail.status === 'Cancelled' && <button className="mini-btn accent" disabled={inactive} onClick={() => { setDetailId(null); setRestore(detail); setRestoreError(''); }}>คืนการจอง</button>}</div><h3>คำถามถึงอาจารย์</h3>{detail.questions.filter(Boolean).map((q, i) => <div className="question-display" key={i}><span>{i + 1}</span><p>{q}</p></div>)}</Modal>}
     {startChoice && <Modal title="เลือกวิชาเริ่มต้น Math + Verbal" close={() => setStartChoice(null)}><p><strong>{startChoice.nickname}</strong> จะเริ่ม <strong>{otherSubject(startChoice.currentSubject)}</strong> ก่อน แล้วส่งต่อ {startChoice.currentSubject} เมื่อวิชาแรกเสร็จ</p>{error && <Notice error>{error}</Notice>}<Notice>รหัสคิวและการเช็กอินคงเดิม ต้องบันทึก / จัดคิวในห้องใหม่อีกครั้งก่อนเรียก</Notice><button className="btn primary wide" disabled={inactive} onClick={() => void run(async () => { await api.startSubject(startChoice.id, otherSubject(startChoice.currentSubject), startChoice.revision ?? -1); setStartChoice(null); }, `เลือกเริ่ม ${otherSubject(startChoice.currentSubject)} แล้ว · เปิดห้องนี้เพื่อจัดคิว`)}>ยืนยันเริ่ม {otherSubject(startChoice.currentSubject)} ก่อน</button></Modal>}
     {edit && <BookingEditModal booking={edit} busy={inactive} save={saveEdit} close={() => setEdit(null)} />}
+    {studentEdit && <StudentDetailsModal key={studentEdit.id} booking={studentEdit} busy={inactive} save={saveStudentDetails} close={()=>{if(!busyRef.current)setStudentEdit(null);}} />}
     {restore && <Modal title="คืนการจอง" close={() => setRestore(null)}><p>คืนรายการของ <strong>{restore.nickname}</strong><br />{subjectLabel(restore.subject)} · {DATE_LABELS[restore.date] ?? restore.date} · {periodText(restore)}</p><Notice>ตรวจที่ว่างใหม่ เก็บข้อมูลและลิงก์เดิม ถ้าเคยเช็กอินแล้วในวันเดิมจะกลับเข้ารอ และต้องจัดลำดับคิวอีกครั้ง</Notice>{restoreError && <Notice error>{restoreError}</Notice>}<button className="btn primary wide" disabled={inactive} onClick={() => void restoreBooking()}>ยืนยันคืนการจอง</button>{canEditBooking(restore) && <button className="btn secondary wide" disabled={inactive} onClick={() => { setRestore(null); setEdit(restore); }}>เลือกวัน / เวลา / วิชาอื่น</button>}</Modal>}
     {deleteTest && <Modal title="ลบข้อมูลทดสอบรายการนี้" close={() => setDeleteTest(null)}><p>ลบ <strong>{deleteTest.nickname}</strong> · {deleteTest.queueNo || 'ยังไม่จัดคิว'}<br />{subjectLabel(deleteTest.subject)} · {DATE_LABELS[deleteTest.date]} · {periodText(deleteTest)}</p><Notice>ใช้เฉพาะฐานข้อมูลเทส ลบการจองและประวัติรายการนี้ถาวร คืนที่ว่าง และลิงก์ติดตามเดิมใช้ไม่ได้ รวมถึงรายการที่ปรึกษาจบแล้ว ลำดับเลขคิวอื่นคงเดิม</Notice>{['Calling','Serving'].includes(deleteTest.status) && <Notice>คิวนี้กำลังเรียกหรือปรึกษาอยู่ การลบจะเอาคิวนี้ออกจากห้องทดสอบด้วย</Notice>}{error && <Notice error>{error}</Notice>}<label className="test-delete-confirm"><input type="checkbox" checked={deleteConfirmed} onChange={e => setDeleteConfirmed(e.target.checked)} />ยืนยันว่าต้องการลบรายการทดสอบนี้ถาวร</label><button className="btn destructive wide" disabled={inactive || !deleteConfirmed || !canManageTestData} onClick={() => void run(async () => {await api.deleteTestBooking(deleteTest.id,deleteTest.revision ?? -1);setDeleteTest(null);clearDraft();},'ลบรายการทดสอบแล้ว · ข้อมูลรายการอื่นคงเดิม')}>ยืนยันลบข้อมูลทดสอบ</button></Modal>}
     {clearTest && <Modal title="ล้างการจองของงานทดสอบนี้" close={() => setClearTest(null)}><p>ล้าง <strong>{clearTest.count} รายการ</strong> ทั้งงาน รวมรายการจบแล้ว เก็บประวัติ ยกเลิก และคิวที่กำลังทำงาน ขอบเขตคือ <strong>{EVENT.title}</strong></p><Notice>เป็นการลบถาวร ล้างการจอง คิว ประวัติและงานเมลของงานทดสอบนี้ เริ่มเลขคิวใหม่ ลิงก์เดิมใช้ไม่ได้ เก็บตารางกิจกรรม บัญชี Staff และการ Login ไว้ ไม่มีผลต่อรอบจริง</Notice>{error && <Notice error>{error}</Notice>}<label>พิมพ์ CLEAR TEST DATA เพื่อยืนยัน<input aria-label="ยืนยันล้างข้อมูลทดสอบ" value={clearText} onChange={e => setClearText(e.target.value)} autoComplete="off" /></label><button className="btn destructive wide" disabled={inactive || clearText !== 'CLEAR TEST DATA' || !canManageTestData} onClick={() => void run(async () => {const r=await api.clearTestData(clearTest.revision,clearText);setClearTest(null);setDeleteTest(null);setDetailId(null);setCancel(null);setRestore(null);setEdit(null);setStartChoice(null);clearDraft();setView('checkin');setSubjectFilter('All');setCheckLevel('All');setCheckDate('All');setStatusFilter('All');setSearch('');setNotice(`ล้างข้อมูลทดสอบ ${r.deletedCount} รายการแล้ว`);},'ล้างงานทดสอบแล้ว · จองรายการใหม่ได้ทันที')}>ยืนยันล้างงานทดสอบนี้</button></Modal>}

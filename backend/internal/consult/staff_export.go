@@ -77,10 +77,10 @@ func registrationWorkbook(cfg Config, bookings []Booking) ([]byte, error) {
 	}
 
 	type group struct {
-		rule                           Rule
-		period                         Period
-		total, used, checked, archived int
-		states                         map[string]int
+		rule           Rule
+		period         Period
+		total, checked int
+		states         map[string]int
 	}
 	groups := map[string]*group{}
 	key := func(i Input) string { return strings.Join([]string{i.Date, i.Level, i.Subject, i.PeriodID}, "|") }
@@ -91,7 +91,12 @@ func registrationWorkbook(cfg Config, bookings []Booking) ([]byte, error) {
 	}
 
 	// Work on an owned slice; display order and the caller's snapshot stay intact.
-	ordered := append([]Booking(nil), bookings...)
+	ordered := make([]Booking, 0, len(bookings))
+	for _, b := range bookings {
+		if b.Status != "Cancelled" && b.ArchivedAt == "" {
+			ordered = append(ordered, b)
+		}
+	}
 	sort.SliceStable(ordered, func(i, j int) bool {
 		a, b := ordered[i], ordered[j]
 		if key(a.Input) != key(b.Input) {
@@ -112,14 +117,8 @@ func registrationWorkbook(cfg Config, bookings []Booking) ([]byte, error) {
 		}
 		g.total++
 		g.states[b.Status]++
-		if b.Status != "Cancelled" {
-			g.used++
-		}
 		if b.CheckedInAt != nil && *b.CheckedInAt != "" {
 			g.checked++
-		}
-		if b.ArchivedAt != "" {
-			g.archived++
 		}
 		period := g.period.Start + " - " + g.period.End
 		if g.period.Start == "" {
@@ -141,7 +140,7 @@ func registrationWorkbook(cfg Config, bookings []Booking) ([]byte, error) {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	summary := [][]string{{"วันที่ Consult", "ระดับ", "วิชาที่จอง", "ช่วงเวลา Consult", "รูปแบบ", "จำนวน Slot", "ลงทะเบียนทั้งหมด (รวมยกเลิก)", "ใช้ Slot (ไม่รวมยกเลิก)", "เช็กอินแล้ว (รวมประวัติ)", "ลงทะเบียนแล้ว", "รอเรียกคิว", "กำลังเรียก", "กำลังปรึกษา", "เสร็จสิ้น", "ยกเลิก", "ไม่มา", "เก็บออกจากรายการแล้ว"}}
+	summary := [][]string{{"วันที่ Consult", "ระดับ", "วิชาที่จอง", "ช่วงเวลา Consult", "รูปแบบ", "จำนวน Slot", "ผู้ลงทะเบียนที่ส่งออก", "เช็กอินแล้ว (เฉพาะที่ส่งออก)", "ลงทะเบียนแล้ว", "รอเรียกคิว", "กำลังเรียก", "กำลังปรึกษา", "เสร็จสิ้น", "ไม่มา"}}
 	for _, k := range keys {
 		g := groups[k]
 		period := g.period.Start + " - " + g.period.End
@@ -150,13 +149,13 @@ func registrationWorkbook(cfg Config, bookings []Booking) ([]byte, error) {
 			period = "รอบเดิม " + g.period.ID
 			capacity = ""
 		}
-		r := []string{g.rule.Date, g.rule.Level, subject(g.rule.Subject), period, g.rule.Mode, capacity, strconv.Itoa(g.total), strconv.Itoa(g.used), strconv.Itoa(g.checked)}
-		for _, status := range []string{"Booked", "Waiting", "Calling", "Serving", "Completed", "Cancelled", "No-show"} {
+		r := []string{g.rule.Date, g.rule.Level, subject(g.rule.Subject), period, g.rule.Mode, capacity, strconv.Itoa(g.total), strconv.Itoa(g.checked)}
+		for _, status := range []string{"Booked", "Waiting", "Calling", "Serving", "Completed", "No-show"} {
 			r = append(r, strconv.Itoa(g.states[status]))
 		}
-		summary = append(summary, append(r, strconv.Itoa(g.archived)))
+		summary = append(summary, r)
 	}
-	return xlsxWorkbook([]exportSheet{{"ผู้ลงทะเบียนทั้งหมด", rows, map[int]bool{13: true, 14: true}}, {"สรุปช่วงเวลา", summary, map[int]bool{5: true, 6: true, 7: true, 8: true, 9: true, 10: true, 11: true, 12: true, 13: true, 14: true, 15: true, 16: true}}})
+	return xlsxWorkbook([]exportSheet{{"ผู้ลงทะเบียนทั้งหมด", rows, map[int]bool{13: true, 14: true}}, {"สรุปช่วงเวลา", summary, map[int]bool{5: true, 6: true, 7: true, 8: true, 9: true, 10: true, 11: true, 12: true, 13: true}}})
 }
 
 type exportSheet struct {

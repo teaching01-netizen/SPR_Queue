@@ -301,6 +301,23 @@ func (h *HTTP) Handler() http.Handler {
 		}
 		respond(w, 200, out)
 	})
+	m.HandleFunc("PATCH /api/staff/bookings/{id}/student-details", func(w http.ResponseWriter, r *http.Request) {
+		identity, ok := h.staff(w, r, true, false)
+		if !ok {
+			return
+		}
+		var in StudentDetailsEdit
+		if err := decode(w, r, &in); err != nil {
+			h.fail(w, r, err)
+			return
+		}
+		out, err := h.Service.EditStudentDetails(r.Context(), r.PathValue("id"), in, identity.User.Username)
+		if err != nil {
+			h.fail(w, r, err)
+			return
+		}
+		respond(w, 200, out)
+	})
 	m.HandleFunc("PATCH /api/staff/bookings/{id}", func(w http.ResponseWriter, r *http.Request) {
 		identity, ok := h.staff(w, r, true, false)
 		if !ok {
