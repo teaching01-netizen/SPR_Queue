@@ -12,7 +12,7 @@ export type Booking = {
   stages: Partial<Record<Stream, { calledAt?: string; startedAt?: string; endedAt?: string }>>;
   archivedAt?: string; archivedBy?: string; completedAt?: string; cancelledAt?: string; cancellationReason?: string;
   counter: string; staff: string; createdAt: string; updatedAt: string;
-  emailStatus: 'Not configured' | 'Pending' | 'Sent' | 'Failed';
+  emailStatus: 'Not configured' | 'Pending' | 'Sent' | 'Failed' | 'Cancelled';
 };
 export type BookingInput = Pick<Booking, 'email' | 'wcode' | 'nickname' | 'school' | 'level' | 'subject' | 'date' | 'periodId' | 'questions' | 'seminarConfirmed' | 'requestId'>;
 export type Period = { id: string; start: string; end: string; capacity: number };

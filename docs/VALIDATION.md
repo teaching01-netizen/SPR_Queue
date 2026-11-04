@@ -1,5 +1,13 @@
 # Validation — PostgreSQL / OpenAI UI update — 13 October 2026
 
+## Selective booking recovery — 4 November 2026
+
+- Added Admin-only per-booking recovery with CSRF/origin protection, exact booking confirmation, mandatory reason, event/revision checks and full previous-state audit. No database reset, migration or global sequence changes.
+- Four new integration tests passed with Go race detector against isolated PGlite through PostgreSQL wire protocol: cancel completed/archived test booking returns exactly one slot; other parents unchanged; unsent mail suppressed; cancelled entry excluded from Excel/Sheets; real B-V-003 reset preserves original tracking URL/code and sent mail, with new bookings continuing at B-V-004; Combined first-subject selection and capacity check; invalid/stale inputs, wrong event, notification Sending guard; anonymous/operator/CSRF/origin and unknown bulk-field rejection.
+- Go test -race ./..., go vet ./... and server build passed. TypeScript check and Vite production build passed (existing third-party use-client bundling warnings).
+- Chromium against isolated Go server verified Admin modal reset and cancellation, preserved queue code and unrelated record, reason/confirmation gating, 390px mobile dialog without horizontal overflow, hidden controls for operator and zero page errors.
+- Browser and integration fixtures used isolated temporary databases with mail and Google Sheets sync disabled. No live registration, Tar record, parent status, production database or Railway configuration was changed.
+
 ## ตรวจผ่านในสภาพแวดล้อมนี้
 
 - Go compile, `go vet ./...`, private environment setup tests พร้อม race detector
@@ -244,3 +252,10 @@ User requested reverting the cost-saving per-page cadence. Booking/edit availabi
 - Node VM tests execute the actual Sheets Code.gs and pass append/update/retry ordering, cleared/tail rows, preserved AN cells, stale requests, event mismatch, committed-write/lost-response recovery, unchanged-revision reconciliation, empty-tab expansion, HMAC validation and target safety cases. Existing mail/polling/preparation Node tests pass alongside them (16 total).
 - Go test -race ./..., go vet ./... and server build pass. PGlite integration with -race passes latest-snapshot retry/coalescing/restart, column parity, corrected data, removal, and literal control-text sanitization; existing export authentication and student-correction lifecycle integration tests also pass. TLS transport tests verify signed UTF-8 payloads, acknowledgments, stale responses, wrong IDs/revisions, extra JSON, login redirects and cancellation.
 - Live Google Drive/Sheets connector reads returned Unknown tool and the supplied page could not be read with web retrieval. No existing target cells were read, overwritten, or visually verified, no production sync variables were enabled, and no live registration data was sent. User must run checkSheetSetup with their Google account, deploy the separate Web app and supply its /exec URL before Railway can be connected.
+
+
+## Named Google Sheets target — 4 November 2026
+
+- Apps Script selects SPR_Queue Sheets Sync by getSheetByName in the existing spreadsheet, and builds its ownership marker from the actual sheet ID. Setup logs the resolved name/gid before the non-empty check, so destination is visible even when content needs inspection.
+- Existing signature, schema, row matching, stale revision and non-empty target checks are preserved. A missing named tab reports TARGET_TAB_NOT_FOUND rather than writing to another tab. No live spreadsheet edits or sync activation were performed.
+- Actual Code.gs VM tests verify selection when the actual gid differs from the former fixed gid, and missing-name rejection, alongside the existing append/update/clear/retry/authentication cases. Backend and frontend source unchanged.
