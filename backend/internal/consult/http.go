@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -211,6 +212,22 @@ func (h *HTTP) Handler() http.Handler {
 			return
 		}
 		respond(w, 200, out)
+	})
+	m.HandleFunc("GET /api/staff/export.xlsx", func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := h.staff(w, r, false, false); !ok {
+			return
+		}
+		out, err := h.Service.StaffExport(r.Context())
+		if err != nil {
+			h.fail(w, r, err)
+			return
+		}
+		w.Header().Set("Content-Type", excelContentType)
+		w.Header().Set("Content-Disposition", `attachment; filename="SPR_Queue_Registrations_`+time.Now().UTC().Format("20060102_150405Z")+`.xlsx"`)
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Length", strconv.Itoa(len(out)))
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(out)
 	})
 	m.HandleFunc("GET /api/staff/bookings/{id}/tracking-link", func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := h.staff(w, r, false, false); !ok {

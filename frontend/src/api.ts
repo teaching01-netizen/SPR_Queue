@@ -18,12 +18,33 @@ async function request<T>(path: string, method = 'GET', body?: unknown, headers:
   finally { clearTimeout(timer); }
 }
 const updated = () => window.dispatchEvent(new Event('queue-updated'));
+async function staffExport() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(`${BASE}/api/staff/export.xlsx`, { credentials: 'include', signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } });
+    if (!response.ok) {
+      if (response.status === 401) window.dispatchEvent(new Event('staff-session-expired'));
+      const json = await response.json().catch(() => null);
+      throw new ApiError(json?.error?.code ?? 'EXPORT_FAILED', json?.error?.message ?? 'Export Excel ไม่สำเร็จ กรุณาลองใหม่', response.status);
+    }
+    if (response.headers.get('Content-Type') !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') throw new Error('ระบบไม่ได้ส่งไฟล์ Excel กรุณาอัปเดตเว็บแล้วลองใหม่');
+    const blob = await response.blob();
+    const filename = response.headers.get('Content-Disposition')?.match(/filename="(SPR_Queue_Registrations_[A-Za-z0-9_-]+\.xlsx)"/)?.[1] ?? 'SPR_Queue_Registrations.xlsx';
+    return { blob, filename };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw new Error('Export ใช้เวลานาน กรุณาลองใหม่');
+    if (error instanceof TypeError) throw new Error('เชื่อมต่อระบบไม่ได้ กรุณาลองใหม่');
+    throw error;
+  } finally { clearTimeout(timer); }
+}
 export const api = {
   event: () => request<ServerEvent>('/api/event'),
   periods: (scope: Pick<BookingInput,'level'|'subject'|'date'>) => request<{id:string;start:string;end:string;available:boolean}[]>(`/api/periods?${new URLSearchParams(scope)}`),
   async book(input: BookingInput) { const {requestId,...payload} = input; const result = await request<{booking:Booking;token:string;trackingUrl:string}>('/api/bookings','POST',payload,{'Idempotency-Key':requestId}); updated(); return {...result.booking, token:result.token}; },
   track: (token:string) => request<ParentView>(`/api/track/${encodeURIComponent(token)}`),
   staffList: () => request<StaffPacket>('/api/staff/bookings'),
+  staffExport,
   staffTrackingLink: (id:string) => request<{trackingUrl:string}>(`/api/staff/bookings/${encodeURIComponent(id)}/tracking-link`),
   display: (level:string,date:string) => request<Record<'Math'|'Verbal'|'MathNext'|'VerbalNext',LiveQueue[]>>(`/api/display?${new URLSearchParams({level,date})}`),
   async assign(scope:QueueScope,bookingIds:string[],expectedRevision:number) { await request('/api/staff/queue-order','PUT',{scope,bookingIds,expectedRevision}); updated(); },

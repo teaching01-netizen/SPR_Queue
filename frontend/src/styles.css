@@ -94,3 +94,7 @@
  .seminar-box .seminar-hour{font-size:21px}
  .seminar-box .seminar-time{padding:12px}
 }
+
+/* Keep Staff export and refresh readable when the header wraps on phones. */
+.header-actions:has(.staff-export-btn){flex-wrap:wrap;justify-content:flex-end;gap:8px}
+@media(max-width:760px){.page-heading:has(.staff-export-btn){flex-wrap:wrap;gap:14px}.header-actions:has(.staff-export-btn){width:100%;justify-content:flex-start}.staff-header-actions .btn{font-size:12px;min-height:40px;padding:10px 14px}}

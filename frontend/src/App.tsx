@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, FormEvent } from 'react';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CalendarDays, Check, CheckCheck, ChevronRight, CircleHelp, Clock3, Copy, GraduationCap, LayoutDashboard, ListOrdered, MapPin, Monitor, Plus, Radio, RefreshCw, Search, ShieldCheck, Sparkles, Ticket, Users, X, ExternalLink, Mail, Video, BookOpen, CheckCircle2 } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CalendarDays, Check, CheckCheck, ChevronRight, CircleHelp, Clock3, Copy, GraduationCap, LayoutDashboard, ListOrdered, MapPin, Monitor, Plus, Radio, RefreshCw, Search, ShieldCheck, Sparkles, Ticket, Users, X, ExternalLink, Download, Mail, Video, BookOpen, CheckCircle2 } from 'lucide-react';
 import { api } from './api';
 import { Button as UIAction } from '@openai/apps-sdk-ui/components/Button';
 import { Input as UIInput } from '@openai/apps-sdk-ui/components/Input';
@@ -163,6 +163,22 @@ function StaffPage({ user }: { user: StaffUser }) {
   const draftRevision = useRef<number | null>(null);
   const [notice, setNotice] = useState(''); const [error, setError] = useState('');
   const [busy, setBusy] = useState(false); const busyRef = useRef(false);
+  const [exporting, setExporting] = useState(false);
+  const exportRef = useRef(false);
+  async function exportExcel() {
+    if (exportRef.current) return;
+    exportRef.current = true; setExporting(true); setError(''); setNotice('');
+    try {
+      const { blob, filename } = await api.staffExport();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url; link.download = filename;
+      document.body.appendChild(link); link.click(); link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 15000);
+      setNotice('ดาวน์โหลด Excel ข้อมูลทั้งหมดแล้ว รวมรายการยกเลิกและรายการจบแล้ว · ไม่ใช้ตัวกรองบนหน้าจอ');
+    } catch (e) { setError(message(e)); }
+    finally { exportRef.current = false; setExporting(false); }
+  }
   const [detailId, setDetailId] = useState<string | null>(null);
   const detail = bookings.find(b => b.id === detailId);
   const [cancel, setCancel] = useState<Booking | null>(null); const [reason, setReason] = useState('');
@@ -308,7 +324,7 @@ function StaffPage({ user }: { user: StaffUser }) {
   const periodText = (b: Booking) => { const text = periodLabel(b.periodId, b.level, b.date); return text === '—' ? `รอบเดิม ${b.periodId}` : text; };
   const nameCell = (b: Booking) => <button className="student-btn" onClick={() => setDetailId(b.id)}><strong>{b.queueNo || 'ยังไม่จัดคิว'}</strong><span>{b.nickname} <small>· {b.wcode || 'ไม่มี Wcode'}</small></span></button>;
   return <>
-    <Header eyebrow="WARWICK OPERATIONS" title="Staff Dashboard" description="เช็กอินจากทุกช่วงเวลา แล้วเปิดรอบเพื่อจัดคิวและเรียกเข้าห้อง"><button className="btn secondary" onClick={() => void refresh()}><RefreshCw size={16} />รีเฟรช</button>{canManageTestData && <button className="btn secondary" disabled={inactive} onClick={() => {setError('');setClearText('');setClearTest({revision:packet?.revision ?? -1,count:bookings.length});}}>ล้างงานทดสอบนี้</button>}</Header>
+    <Header eyebrow="WARWICK OPERATIONS" title="Staff Dashboard" description="เช็กอินจากทุกช่วงเวลา แล้วเปิดรอบเพื่อจัดคิวและเรียกเข้าห้อง"><div className="header-actions staff-header-actions"><button className="btn secondary" onClick={() => void refresh()}><RefreshCw size={16} />รีเฟรช</button><button className="btn secondary staff-export-btn" disabled={exporting || busy} aria-busy={exporting} title="ดาวน์โหลดผู้ลงทะเบียนทั้งหมด ทุกวัน ทุกวิชา รวมรายการยกเลิกและรายการจบแล้ว" onClick={() => void exportExcel()}><Download size={16} />{exporting ? 'กำลัง Export…' : 'Export Excel'}</button>{canManageTestData && <button className="btn secondary" disabled={inactive} onClick={() => {setError('');setClearText('');setClearTest({revision:packet?.revision ?? -1,count:bookings.length});}}>ล้างงานทดสอบนี้</button>}</div></Header>
     <div className="staff-view-tabs" role="group" aria-label="หน้าทำงาน Staff">
       <button aria-pressed={view === 'checkin'} className={view === 'checkin' ? 'active' : ''} onClick={() => { setView('checkin'); setStatusFilter('All'); clearDraft(); }}><CheckCheck size={18} />เช็กอิน · รวมทุกช่วงเวลา</button>
       <button aria-pressed={view === 'queue'} className={view === 'queue' ? 'active' : ''} onClick={() => { setView('queue'); setStatusFilter('All'); updateScope({}); }}><ListOrdered size={18} />จัดคิว / เรียกคิว</button>
