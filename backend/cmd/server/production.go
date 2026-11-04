@@ -62,3 +62,17 @@ func configuredMailer(cfg consult.Config) (consult.Mailer, bool, error) {
 		return nil, false, fmt.Errorf("EMAIL_PROVIDER must be off, apps-script, smtp or resend")
 	}
 }
+
+func configuredSheetSync(production bool) (consult.SheetSink, bool, error) {
+	endpoint, secret := os.Getenv("SHEETS_SYNC_URL"), os.Getenv("SHEETS_SYNC_SECRET")
+	if endpoint == "" && secret == "" {
+		return nil, false, nil
+	}
+	if !production {
+		return nil, false, fmt.Errorf("Google Sheets sync is only enabled in production")
+	}
+	if err := consult.ValidateAppsScriptSettings(endpoint, secret); err != nil {
+		return nil, false, fmt.Errorf("set a valid SHEETS_SYNC_URL and 64-hex SHEETS_SYNC_SECRET")
+	}
+	return consult.AppsScriptSheetSink{URL: endpoint, Secret: secret}, true, nil
+}

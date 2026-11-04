@@ -1,0 +1,4 @@
+อัปโหลดโฟลเดอร์และไฟล์ใน ZIP ทับที่ root ของ Repo SPR_Queue แล้ว Commit รอ Railway Success
+จากนั้นสร้าง Apps Script แยกสำหรับ Google Sheets ตาม docs/GOOGLE_SHEETS_SYNC_TH.md
+ยังไม่เปิดซิงก์จนกว่าจะ Deploy Apps Script แล้วตั้ง SHEETS_SYNC_URL และ SHEETS_SYNC_SECRET
+ชุดนี้รวม Staff แก้ข้อมูลและ Export ล่าสุดแล้ว

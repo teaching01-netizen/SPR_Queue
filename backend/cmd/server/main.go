@@ -257,6 +257,13 @@ func main() {
 	server := &http.Server{Addr: addr, Handler: handler.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 20 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384}
 	var worker sync.WaitGroup
 	defer worker.Wait()
+	if sink, on, e := configuredSheetSync(production); e != nil {
+		handler.Logger.Error("google_sheets_sync_disabled", "category", "INVALID_SHEETS_CONFIG")
+	} else if on {
+		log.Print("Google Sheets sync enabled; background snapshot sync every 15 seconds when data changes")
+		worker.Add(1)
+		go func() { defer worker.Done(); consult.RunSheetSync(ctx, service, sink, handler.Logger) }()
+	}
 	if service.MailEnabled {
 		worker.Add(1)
 		go func() {

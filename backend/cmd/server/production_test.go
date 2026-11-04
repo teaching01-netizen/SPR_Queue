@@ -5,6 +5,29 @@ import (
 	"warwick/consult/internal/consult"
 )
 
+func TestSheetsSyncConfiguration(t *testing.T) {
+	t.Setenv("SHEETS_SYNC_URL", "")
+	t.Setenv("SHEETS_SYNC_SECRET", "")
+	if _, on, err := configuredSheetSync(true); err != nil || on {
+		t.Fatal("not off by default")
+	}
+	t.Setenv("SHEETS_SYNC_URL", "https://script.google.com/macros/s/deployment_fixture_123/exec")
+	if _, _, err := configuredSheetSync(true); err == nil {
+		t.Fatal("missing secret accepted")
+	}
+	t.Setenv("SHEETS_SYNC_SECRET", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	if _, on, err := configuredSheetSync(true); err != nil || !on {
+		t.Fatal(err)
+	}
+	if _, _, err := configuredSheetSync(false); err == nil {
+		t.Fatal("local test could sync into production sheet")
+	}
+	t.Setenv("SHEETS_SYNC_URL", "https://accounts.google.com/login")
+	if _, _, err := configuredSheetSync(true); err == nil {
+		t.Fatal("unexpected endpoint accepted")
+	}
+}
+
 func TestRailwayPortAndDomain(t *testing.T) {
 	t.Setenv("PORT", "9191")
 	t.Setenv("HTTP_ADDR", "127.0.0.1:8080")

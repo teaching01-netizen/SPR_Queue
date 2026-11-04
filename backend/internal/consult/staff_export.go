@@ -25,6 +25,15 @@ func (s *Service) StaffExport(ctx context.Context) ([]byte, error) {
 }
 
 func registrationWorkbook(cfg Config, bookings []Booking) ([]byte, error) {
+	sheets, err := registrationSheets(cfg, bookings)
+	if err != nil {
+		return nil, err
+	}
+	return xlsxWorkbook(sheets)
+}
+
+// Both Excel and Google Sheets use this one column schema and visibility rule.
+func registrationSheets(cfg Config, bookings []Booking) ([]exportSheet, error) {
 	loc, err := time.LoadLocation(cfg.Event.Timezone)
 	if err != nil {
 		return nil, err
@@ -155,7 +164,7 @@ func registrationWorkbook(cfg Config, bookings []Booking) ([]byte, error) {
 		}
 		summary = append(summary, r)
 	}
-	return xlsxWorkbook([]exportSheet{{"ผู้ลงทะเบียนทั้งหมด", rows, map[int]bool{13: true, 14: true}}, {"สรุปช่วงเวลา", summary, map[int]bool{5: true, 6: true, 7: true, 8: true, 9: true, 10: true, 11: true, 12: true, 13: true}}})
+	return []exportSheet{{"ผู้ลงทะเบียนทั้งหมด", rows, map[int]bool{13: true, 14: true}}, {"สรุปช่วงเวลา", summary, map[int]bool{5: true, 6: true, 7: true, 8: true, 9: true, 10: true, 11: true, 12: true, 13: true}}}, nil
 }
 
 type exportSheet struct {
@@ -256,13 +265,16 @@ func excelColumn(n int) string {
 	}
 	return out
 }
-func xmlText(value string) string {
-	value = strings.Map(func(r rune) rune {
+func cleanExportText(value string) string {
+	return strings.Map(func(r rune) rune {
 		if r == 9 || r == 10 || r == 13 || (r >= 32 && r <= 0xD7FF) || (r >= 0xE000 && r <= 0xFFFD) || (r >= 0x10000 && r <= 0x10FFFF) {
 			return r
 		}
 		return -1
 	}, value)
+}
+func xmlText(value string) string {
+	value = cleanExportText(value)
 	var out bytes.Buffer
 	_ = xml.EscapeText(&out, []byte(value))
 	return out.String()

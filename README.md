@@ -44,3 +44,13 @@ Dockerfileที่root buildทั้งFrontendและGo แล้วเส�
 ## หน้าจองและอีเมลยืนยัน
 
 ดู [รายการปรับ UI](docs/UI_UPDATE_TH.md) และ [เปิดส่งอีเมลจริง](docs/EMAIL_SETUP_TH.md) แม่แบบอีเมลเดิมมีช่วงเวลา Consult และปุ่มติดตามคิว ใช้ Google Apps Script เป็นตัวส่ง โดยเชื่อม Go ผ่านคำขอ HTTPS ที่มีลายเซ็น
+
+## Staff Excel export
+
+The Staff dashboard has an Export Excel button next to Refresh. It downloads an authenticated, event-scoped `.xlsx` snapshot with visible registrations (excluding cancelled and archived records) and a period summary, independently of UI filters. See [docs/STAFF_EXPORT_TH.md](docs/STAFF_EXPORT_TH.md). No new dependencies, database migrations or Railway variables are required.
+
+Staff can also correct Wcode, nickname, school and parent email using Edit student details without changing booking identity, queues or consultation history.
+
+## Google Sheets automatic sync
+
+Optional production background sync mirrors the same 39 registration columns to the supplied Google Sheets tab via a separate signed Apps Script receiver. New registrations append at the bottom, corrections update by booking ID, and cancelled/archived rows are cleared. Configure SHEETS_SYNC_URL and SHEETS_SYNC_SECRET after deploying the Sheets script; see [docs/GOOGLE_SHEETS_SYNC_TH.md](docs/GOOGLE_SHEETS_SYNC_TH.md). PostgreSQL remains the source and registration continues if Google is unavailable.
