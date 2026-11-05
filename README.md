@@ -47,6 +47,10 @@ Dockerfileที่root buildทั้งFrontendและGo แล้วเส�
 
 ดู [รายการปรับ UI](docs/UI_UPDATE_TH.md) และ [เปิดส่งอีเมลจริง](docs/EMAIL_SETUP_TH.md) แม่แบบอีเมลเดิมมีช่วงเวลา Consult และปุ่มติดตามคิว ใช้ Google Apps Script เป็นตัวส่ง โดยเชื่อม Go ผ่านคำขอ HTTPS ที่มีลายเซ็น
 
+## ลิงก์ติดตามคิวสำหรับผู้ปกครอง · ทนการเชื่อมต่อหลุด
+
+ลิงก์ส่วนตัวจากอีเมลเปิดหน้า `#/track/<token>` แบบเฉพาะผู้ปกครอง ไม่มีเมนูหลังบ้าน จอคิวสาธารณะอยู่ที่ `#/display` (โหมดจอใหญ่ใช้ `#/display?level=Beginner&date=2026-11-07&kiosk=1`) หน้าเว็บเก็บข้อมูลคิวล่าสุดไว้ในเครื่อง จึงยังแสดงTicketเดิมพร้อมเวลาและป้าย "ออฟไลน์" เมื่อเน็ตหลุด และกลับมาอัปเดตเองเมื่อเชื่อมต่อได้ Service worker แคชตัวเว็บให้เปิดซ้ำได้แม้ไม่มีสัญญาณ (ยกเว้น `/api/*` ที่ต้องอ่านสดเสมอ) ลิงก์ที่ถูกยกเลิก/ลบแล้วจะแจ้งชัดเจนและล้างแคชเดิม ไม่ค้างเป็นตั๋วผี ดูรายละเอียดผลตรวจใน [VALIDATION.md](docs/VALIDATION.md)
+
 ## Staff Excel export
 
 The Staff dashboard has an Export Excel button next to Refresh. It downloads an authenticated, event-scoped `.xlsx` snapshot with visible registrations (excluding cancelled and archived records) and a period summary, independently of UI filters. See [docs/STAFF_EXPORT_TH.md](docs/STAFF_EXPORT_TH.md). No new dependencies, database migrations or Railway variables are required.

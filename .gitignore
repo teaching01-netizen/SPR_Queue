@@ -1,0 +1,11 @@
+.DS_Store
+*.log
+
+# Frontend build artifacts and dependencies
+frontend/node_modules/
+frontend/dist/
+
+# Local secrets (Railway prep writes these; never commit)
+.private/
+.env
+.env.local
