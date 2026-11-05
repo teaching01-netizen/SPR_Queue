@@ -37,9 +37,9 @@ export function FreshnessBanner({ band, updated }: { band: Freshness; updated: D
   );
 }
 
-export function TrackPage({ token }: { token: string }) {
+export function TrackPage({ token, staffView = false }: { token: string; staffView?: boolean }) {
   if (!token) return <TrackEntry />;
-  return <TrackTicket token={token} />;
+  return <TrackTicket token={token} staffView={staffView} />;
 }
 
 function TrackEntry() {
@@ -74,7 +74,7 @@ function TrackEntry() {
   );
 }
 
-function TrackTicket({ token }: { token: string }) {
+function TrackTicket({ token, staffView = false }: { token: string; staffView?: boolean }) {
   const fetcher = useCallback(() => api.track(token), [token]);
   const { data, error, errorStatus, loading, updated, refresh } = useLive(fetcher, { refreshOnResume: true, cacheKey: token });
   const online = useOnline();
@@ -94,6 +94,7 @@ function TrackTicket({ token }: { token: string }) {
   const header = (
     <Header eyebrow="YOUR PRIVATE QUEUE" title="ติดตามคิวของคุณ" description="กรุณารอติดตามรหัสคิว เมื่อถึงคิวทีมงานจะเรียกเข้าพบอาจารย์">
       <div className="header-actions">
+        {staffView && <span className="staff-preview-chip">STAFF PREVIEW · มุมมองผู้ปกครอง</span>}
         <a className="btn secondary" href={displayHref('', '')}><Monitor size={15} /> จอคิว</a>
         <button className="btn secondary" onClick={() => void refresh()}><RefreshCw size={16} /> รีเฟรช</button>
       </div>

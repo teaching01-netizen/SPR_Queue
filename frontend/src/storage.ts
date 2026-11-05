@@ -96,3 +96,23 @@ export function readDisplayScope(): DisplayScopeCache | null {
 export function writeDisplayScope(scope: DisplayScopeCache): void {
   writeJSON(DISPLAY_KEY, scope);
 }
+
+// Staff identity cache: only a username/role label, used to render the portal shell
+// immediately on reload. Authoritative checks always come from /api/auth/me.
+export const STAFF_CACHE_KEY = `${PREFIX}staff`;
+
+export type StaffIdentity = { username: string; role: string };
+
+export function readStaffIdentity(): StaffIdentity | null {
+  const cached = readJSON<StaffIdentity>(STAFF_CACHE_KEY);
+  if (!cached || typeof cached.username !== 'string' || !cached.username) return null;
+  return { username: cached.username, role: typeof cached.role === 'string' ? cached.role : '' };
+}
+
+export function writeStaffIdentity(identity: StaffIdentity): void {
+  writeJSON(STAFF_CACHE_KEY, { username: identity.username, role: identity.role });
+}
+
+export function clearStaffIdentity(): void {
+  removeKey(STAFF_CACHE_KEY);
+}

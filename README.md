@@ -51,6 +51,10 @@ Dockerfileที่root buildทั้งFrontendและGo แล้วเส�
 
 ลิงก์ส่วนตัวจากอีเมลเปิดหน้า `#/track/<token>` แบบเฉพาะผู้ปกครอง ไม่มีเมนูหลังบ้าน จอคิวสาธารณะอยู่ที่ `#/display` (โหมดจอใหญ่ใช้ `#/display?level=Beginner&date=2026-11-07&kiosk=1`) หน้าเว็บเก็บข้อมูลคิวล่าสุดไว้ในเครื่อง จึงยังแสดงTicketเดิมพร้อมเวลาและป้าย "ออฟไลน์" เมื่อเน็ตหลุด และกลับมาอัปเดตเองเมื่อเชื่อมต่อได้ Service worker แคชตัวเว็บให้เปิดซ้ำได้แม้ไม่มีสัญญาณ (ยกเว้น `/api/*` ที่ต้องอ่านสดเสมอ) ลิงก์ที่ถูกยกเลิก/ลบแล้วจะแจ้งชัดเจนและล้างแคชเดิม ไม่ค้างเป็นตั๋วผี ดูรายละเอียดผลตรวจใน [VALIDATION.md](docs/VALIDATION.md)
 
+## ทางเข้า Staff · sidebar เฉพาะผู้ที่ล็อกอิน
+
+URL หลักของเว็บ (`/`) เป็นทางเข้า Staff: ถ้ายังไม่ล็อกอินจะเห็นหน้า Login และเมื่อล็อกอินแล้วจะเข้าแดชบอร์ด หน้าเมนูด้านข้าง (sidebar) แสดงเฉพาะ Staff ที่ล็อกอินอยู่เท่านั้น ผู้ปกครองที่เปิดลิงก์ติดตามคิวหรือหน้าจองจะเห็นหน้าแบบสาธารณะโดยไม่มีเมนูหลังบ้าน หน้าจอคิวโหมด `kiosk=1` ไม่แสดง sidebar แม้เครื่องนั้นจะมี session Staff ค้างอยู่ ลิงก์หน้าจองสำหรับผู้ปกครองคือ `/#/book` และลิงก์ติดตามคิวคือ `/#/track/<token>` ตามเดิม
+
 ## Staff Excel export
 
 The Staff dashboard has an Export Excel button next to Refresh. It downloads an authenticated, event-scoped `.xlsx` snapshot with visible registrations (excluding cancelled and archived records) and a period summary, independently of UI filters. See [docs/STAFF_EXPORT_TH.md](docs/STAFF_EXPORT_TH.md). No new dependencies, database migrations or Railway variables are required.

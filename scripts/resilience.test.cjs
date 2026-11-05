@@ -58,25 +58,64 @@ test('parseHash defaults an empty hash to the booking page', async () => {
   assert.equal(parseHash('#/').page, 'book');
 });
 
-test('shellFor gives the tracking link a parent surface and the board a kiosk surface', async () => {
+test('anonymous visitors never get the portal shell', async () => {
   const { shellFor } = await routesMod;
   assert.equal(shellFor('track'), 'parent');
   assert.equal(shellFor('display'), 'kiosk');
-  assert.equal(shellFor('book'), 'portal');
-  assert.equal(shellFor('staff'), 'portal');
+  assert.equal(shellFor('book'), 'parent');
+  assert.equal(shellFor('staff'), 'auth');
+  assert.equal(shellFor('unknown-route'), 'parent');
 });
 
-test('a tab that opened a private link is kept away from booking and staff pages', async () => {
-  const { guardsPortalRoute, markParentTab, readParentTab, PARENT_TAB_KEY } = await routesMod;
+test('a signed-in staff member keeps the portal shell on every surface', async () => {
+  const { shellFor } = await routesMod;
+  const staff = { staff: true };
+  assert.equal(shellFor('track', staff), 'portal');
+  assert.equal(shellFor('display', staff), 'portal');
+  assert.equal(shellFor('book', staff), 'portal');
+  assert.equal(shellFor('staff', staff), 'portal');
+  assert.equal(shellFor('unknown-route', staff), 'portal');
+});
+
+test('kiosk mode outranks an ambient staff session', async () => {
+  const { shellFor } = await routesMod;
+  assert.equal(shellFor('display', { staff: true, kiosk: true }), 'kiosk');
+  assert.equal(shellFor('display', { staff: false, kiosk: true }), 'kiosk');
+  assert.equal(shellFor('display', { staff: true, kiosk: false }), 'portal');
+  // kiosk=1 on a non-board page must not turn it into a kiosk
+  assert.equal(shellFor('track', { staff: false, kiosk: true }), 'parent');
+});
+
+test('the bare site URL is the staff entry point', async () => {
+  const { isBaseEntry } = await routesMod;
+  assert.equal(isBaseEntry(''), true);
+  assert.equal(isBaseEntry('#'), true);
+  assert.equal(isBaseEntry('#/'), true);
+  assert.equal(isBaseEntry('#/book'), false);
+  assert.equal(isBaseEntry('#/track/abc'), false);
+  assert.equal(isBaseEntry('#/display?kiosk=1'), false);
+});
+
+test('the private-link guard applies to anonymous tabs only', async () => {
+  const { shouldGuard } = await routesMod;
+  assert.equal(shouldGuard('book', true, false), true);
+  assert.equal(shouldGuard('staff', true, false), true);
+  assert.equal(shouldGuard('book', true, true), false);
+  assert.equal(shouldGuard('staff', true, true), false);
+  assert.equal(shouldGuard('book', false, false), false);
+  assert.equal(shouldGuard('display', true, false), false);
+});
+
+test('a private-link tab remembers that it is a parent surface and can leave for the staff login', async () => {
+  const { markParentTab, readParentTab, clearParentTab, PARENT_TAB_KEY } = await routesMod;
   await reset();
   assert.equal(readParentTab(), false);
-  assert.equal(guardsPortalRoute('book', false), false);
   markParentTab();
   assert.equal(session.getItem(PARENT_TAB_KEY), '1');
   assert.equal(readParentTab(), true);
-  assert.equal(guardsPortalRoute('book', true), true);
-  assert.equal(guardsPortalRoute('staff', true), true);
-  assert.equal(guardsPortalRoute('display', true), false);
+  clearParentTab();
+  assert.equal(readParentTab(), false);
+  assert.equal(session.getItem(PARENT_TAB_KEY), null);
 });
 
 test('displayHref only includes the parameters that are set', async () => {
@@ -146,6 +185,19 @@ test('kiosk board scope is remembered across reloads', async () => {
   assert.equal(readDisplayScope(), null);
   writeDisplayScope({ level: 'Beginner', date: '2026-11-07' });
   assert.deepEqual(readDisplayScope(), { level: 'Beginner', date: '2026-11-07' });
+});
+
+test('the staff identity cache renders the portal shell before the probe resolves', async () => {
+  const { readStaffIdentity, writeStaffIdentity, clearStaffIdentity } = await storageMod;
+  await reset();
+  assert.equal(readStaffIdentity(), null);
+  writeStaffIdentity({ username: 'RD1', role: 'admin' });
+  assert.deepEqual(readStaffIdentity(), { username: 'RD1', role: 'admin' });
+  local.setItem('spr.v1.staff', JSON.stringify({ role: 'admin' }));
+  assert.equal(readStaffIdentity(), null);
+  writeStaffIdentity({ username: 'SM2', role: 'staff' });
+  clearStaffIdentity();
+  assert.equal(readStaffIdentity(), null);
 });
 
 test('a storage quota failure never breaks writing to the cache', async () => {

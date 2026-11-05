@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, FormEvent } from 'react';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CalendarDays, Check, CheckCheck, ChevronRight, CircleHelp, Clock3, Copy, GraduationCap, LayoutDashboard, ListOrdered, MapPin, Monitor, Plus, Radio, RefreshCw, Search, ShieldCheck, Sparkles, Ticket, Users, X, ExternalLink, Download, Mail, Video, BookOpen, CheckCircle2 } from 'lucide-react';
-import { api } from './api';
+import { api, ApiError } from './api';
 import { Button as UIAction } from '@openai/apps-sdk-ui/components/Button';
 import { Input as UIInput } from '@openai/apps-sdk-ui/components/Input';
 import { Badge as UIBadge } from '@openai/apps-sdk-ui/components/Badge';
@@ -13,9 +13,10 @@ import type { Booking, Level, QueueScope, Status, Subject } from './types';
 
 import type { ServerEvent } from './api';
 import { DisplayPage } from './pages/DisplayPage';
+import { StaffLogin } from './pages/StaffLogin';
 import { TrackPage } from './pages/TrackPage';
-import { displayHref, guardsPortalRoute, markParentTab, parseHash, readParentTab, shellFor } from './routes';
-import { readEventConfig, writeEventConfig } from './storage';
+import { clearParentTab, displayHref, isBaseEntry, markParentTab, parseHash, readParentTab, shellFor, shouldGuard } from './routes';
+import { STAFF_CACHE_KEY, clearStaffIdentity, readEventConfig, readStaffIdentity, writeEventConfig, writeStaffIdentity } from './storage';
 import { Badge, EventBanner, Header, Notice } from './ui';
 
 const message = (e: unknown) => e instanceof Error ? e.message : 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง';
@@ -29,12 +30,15 @@ function Modal({ title, children, close }: { title: string; children: ReactNode;
 }
 const bootEvent = readEventConfig<ServerEvent>();
 if (bootEvent) configureEvent(bootEvent);
+const bootStaff = readStaffIdentity();
 
 export function App() {
-  const [hash, setHash] = useState(location.hash || '#/book');
+  const [hash, setHash] = useState(location.hash || '#/staff');
   const [ready, setReady] = useState(() => Boolean(bootEvent));
   const [configError, setConfigError] = useState('');
   const [parentTab, setParentTab] = useState(() => readParentTab());
+  const [staff, setStaff] = useState<StaffUser | null>(() => (bootStaff ? { username: bootStaff.username, role: bootStaff.role } : null));
+
   useEffect(() => {
     let active = true;
     api.event().then(value => {
@@ -46,31 +50,110 @@ export function App() {
     }).catch(e => { if (active) setConfigError(message(e)); });
     return () => { active = false; };
   }, []);
+
+  // Authoritative session probe. It never blocks the public surfaces: the portal
+  // shell is rendered optimistically from the cached identity and corrected here.
   useEffect(() => {
-    const listener = () => { setHash(location.hash || '#/book'); window.scrollTo(0, 0); };
+    let active = true;
+    api.me().then(user => {
+      if (!active) return;
+      setStaff(user);
+      writeStaffIdentity(user);
+    }).catch(e => {
+      if (!active) return;
+      const status = e instanceof ApiError ? e.status : null;
+      if (status === 401) { setStaff(null); clearStaffIdentity(); }
+    });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const clear = () => { setStaff(null); clearStaffIdentity(); };
+    window.addEventListener('staff-session-expired', clear);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== STAFF_CACHE_KEY) return;
+      if (!event.newValue) { setStaff(null); return; }
+      try {
+        const cached = JSON.parse(event.newValue) as { username?: string; role?: string };
+        setStaff(cached.username ? { username: cached.username, role: cached.role ?? '' } : null);
+      } catch { setStaff(null); }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('staff-session-expired', clear);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isBaseEntry(location.hash)) {
+      history.replaceState(null, '', '#/staff');
+      setHash('#/staff');
+    }
+    const listener = () => {
+      if (isBaseEntry(location.hash)) {
+        history.replaceState(null, '', '#/staff');
+        setHash('#/staff');
+        return;
+      }
+      setHash(location.hash);
+      window.scrollTo(0, 0);
+    };
     window.addEventListener('hashchange', listener);
     return () => window.removeEventListener('hashchange', listener);
   }, []);
+
   const route = parseHash(hash);
-  const shell = shellFor(route.page);
+  const staffView = staff !== null;
+  const shell = shellFor(route.page, { staff: staffView, kiosk: route.kiosk });
+
   useEffect(() => {
-    if (shell === 'parent' && route.token) { markParentTab(); setParentTab(true); }
-  }, [shell, route.token]);
-  if (shell === 'portal' && guardsPortalRoute(route.page, parentTab)) return <PortalGuard />;
-  const content = route.page === 'track' ? <TrackPage key={route.token} token={route.token} />
+    if (shell === 'parent' && route.token && !staffView) markParentTab();
+  }, [shell, route.token, staffView]);
+
+  const onLogin = useCallback((user: StaffUser) => {
+    setStaff(user);
+    writeStaffIdentity(user);
+  }, []);
+
+  const onLogout = useCallback(async () => {
+    try { await api.logout(); } catch { /* session may already be gone */ }
+    setStaff(null);
+    clearStaffIdentity();
+    if (parseHash(location.hash).page !== 'staff') location.hash = '#/staff';
+  }, []);
+
+  // A private-link tab stays on the public surface only when nobody is signed in.
+  if (shouldGuard(route.page, parentTab, staffView)) return <PortalGuard onStaff={() => { clearParentTab(); setParentTab(false); location.hash = '#/staff'; }} />;
+
+  const content = route.page === 'track' ? <TrackPage key={route.token} token={route.token} staffView={staffView} />
     : route.page === 'display' ? <DisplayPage level={route.level} date={route.date} kiosk={route.kiosk} />
     : route.page === 'book' ? <BookPage />
-    : route.page === 'staff' ? <StaffGate />
-    : <div className="empty"><h1>ไม่พบหน้านี้</h1><a href="#/book">กลับหน้าจอง</a></div>;
-  if (shell === 'parent') return <div className="parent-shell"><header className="parent-topbar"><a className="parent-brand" href="#/track"><div className="brand-mark">W<span /></div><div>WARWICK<span>INSTITUTE</span></div></a><a className="text-btn" href={displayHref('', '')}><Monitor size={14} /> จอแสดงคิว</a></header>{ready && <EventBanner />}<main className="parent-main">{content}</main><footer className="parent-footer"><span>© Warwick Institute</span><span>สอบถาม 02-658-4880</span></footer></div>;
+    : route.page === 'staff' ? (staff ? <StaffAccess user={staff} onLogout={onLogout} /> : <StaffLogin onSuccess={onLogin} />)
+    : <div className="empty"><h1>ไม่พบหน้านี้</h1><a href={staffView ? '#/staff' : '#/book'}>{staffView ? 'กลับแดชบอร์ด' : 'กลับหน้าจอง'}</a></div>;
+
+  if (shell === 'auth') return <AuthShell>{content}</AuthShell>;
+
+  if (shell === 'parent') return <div className="parent-shell"><header className="parent-topbar"><a className="parent-brand" href="#/track"><div className="brand-mark">W<span /></div><div>WARWICK<span>INSTITUTE</span></div></a><a className="text-btn" href={displayHref('', '')}><Monitor size={14} /> จอแสดงคิว</a></header>{ready && <EventBanner />}<main className="parent-main">{content}</main><footer className="parent-footer"><span>© Warwick Institute</span><span>สอบถาม 02-658-4880 · <a href="#/staff">เข้าสู่ระบบ Staff</a></span></footer></div>;
+
   if (shell === 'kiosk') return <div className={`kiosk-shell ${route.kiosk ? 'is-kiosk' : ''}`}><main className="kiosk-main">{content}</main></div>;
+
   if (!ready) return <div className="empty"><h1>Warwick Private Consult</h1>{configError ? <><Notice error>เชื่อมต่อ Backend ไม่สำเร็จ กรุณาเปิด Go Server แล้วลองใหม่</Notice><button className="btn secondary" onClick={() => location.reload()}>ลองใหม่</button></> : <p>กำลังโหลดตารางกิจกรรม…</p>}</div>;
+
   const nav = [{ id: 'book', icon: CalendarDays, name: 'จอง Private Consult', sub: 'BOOK A CONSULTATION' }, { id: 'track', icon: Ticket, name: 'ติดตามคิวของคุณ', sub: 'YOUR QUEUE' }, { id: 'staff', icon: LayoutDashboard, name: 'Staff Dashboard', sub: 'QUEUE MANAGEMENT' }, { id: 'display', icon: Monitor, name: 'จอแสดงคิว', sub: 'LIVE QUEUE DISPLAY' }];
-  return <div className="app"><aside className="sidebar"><a href="#/book" className="brand"><div className="brand-mark">W<span /></div><div>WARWICK<span>INSTITUTE</span></div></a><div className="workspace-label">CONSULTATION PORTAL</div><nav aria-label="เมนูหลัก">{nav.map(n => <a key={n.id} href={`#/${n.id}`} className={`nav-item ${route.page === n.id ? 'selected' : ''}`} aria-current={route.page === n.id ? 'page' : undefined}><n.icon size={19} /><span>{n.name}<small>{n.sub}</small></span>{route.page === n.id && <ChevronRight size={15} />}</a>)}</nav><div className="sidebar-card"><Sparkles size={22} /><p>Every next step,<br /><strong>starts with a conversation.</strong></p><span>พร้อมที่สุด ให้สูงที่สุด</span></div><div className="sidebar-footer"><ShieldCheck size={16} /><span>Warwick Private Consult</span></div></aside><div className="app-main"><div className="topbar"><div className="breadcrumb">Warwick Institute <ChevronRight size={13} /> <strong>Private Consult</strong></div><div className="prototype"><span className="dot" /> CONNECTED PORTAL</div></div><div className="sample-banner"><span>{EVENT.sample ? EVENT.id.startsWith('local-test-') ? 'โหมดทดลองในเครื่อง · ข้อมูลทดสอบ' : 'ตารางกิจกรรมตัวอย่าง · สำหรับทดลองระบบ' : EVENT.title}</span><span>เชื่อมต่อระบบจองและคิวของ Warwick</span></div><main>{content}</main><footer className="page-footer"><span>© Warwick Institute</span><span>Private Consult · Student Performance Report</span></footer></div></div>;
+  return <div className="app"><aside className="sidebar"><a href="#/book" className="brand"><div className="brand-mark">W<span /></div><div>WARWICK<span>INSTITUTE</span></div></a><div className="workspace-label">CONSULTATION PORTAL</div><nav aria-label="เมนูหลัก">{nav.map(n => <a key={n.id} href={`#/${n.id}`} className={`nav-item ${route.page === n.id ? 'selected' : ''}`} aria-current={route.page === n.id ? 'page' : undefined}><n.icon size={19} /><span>{n.name}<small>{n.sub}</small></span>{route.page === n.id && <ChevronRight size={15} />}</a>)}</nav><div className="sidebar-card"><Sparkles size={22} /><p>Every next step,<br /><strong>starts with a conversation.</strong></p><span>พร้อมที่สุด ให้สูงที่สุด</span></div><div className="sidebar-footer"><ShieldCheck size={16} /><span>{staff ? staff.username : 'Warwick Private Consult'}</span></div></aside><div className="app-main"><div className="topbar"><div className="breadcrumb">Warwick Institute <ChevronRight size={13} /> <strong>Private Consult</strong></div><div className="prototype"><span className="dot" /> CONNECTED PORTAL</div></div><div className="sample-banner"><span>{EVENT.sample ? EVENT.id.startsWith('local-test-') ? 'โหมดทดลองในเครื่อง · ข้อมูลทดสอบ' : 'ตารางกิจกรรมตัวอย่าง · สำหรับทดลองระบบ' : EVENT.title}</span><span>เชื่อมต่อระบบจองและคิวของ Warwick</span></div><main>{content}</main><footer className="page-footer"><span>© Warwick Institute</span><span>Private Consult · Student Performance Report</span></footer></div></div>;
 }
 
-function PortalGuard() {
-  return <div className="parent-shell"><header className="parent-topbar"><a className="parent-brand" href="#/track"><div className="brand-mark">W<span /></div><div>WARWICK<span>INSTITUTE</span></div></a></header><main className="parent-main"><div className="card guard-card"><h1>หน้านี้ไม่พร้อมใช้งาน</h1><p>แท็บนี้กำลังติดตามคิวของคุณอยู่ · กลับไปที่หน้าคิวเพื่อดูสถานะล่าสุด</p><p className="parent-note">หากต้องการจองรอบใหม่ กรุณาเปิดลิงก์หลักของ Warwick ในแท็บใหม่</p><a className="btn primary" href="#/track">กลับไปที่คิวของคุณ</a></div></main></div>;
+function AuthShell({ children }: { children: ReactNode }) {
+  return <div className="auth-shell"><header className="auth-header"><a className="parent-brand" href="#/book"><div className="brand-mark">W<span /></div><div>WARWICK<span>INSTITUTE</span></div></a><a className="text-btn" href="#/book">หน้าจองผู้ปกครอง</a></header><main className="auth-main">{children}</main><footer className="auth-footer"><span>© Warwick Institute</span><span>Warwick Private Consult · Staff access</span></footer></div>;
+}
+
+function StaffAccess({ user, onLogout }: { user: StaffUser; onLogout: () => void }) {
+  return <><div className="staff-login-bar"><span><ShieldCheck size={15} /> {user.username}</span><button className="text-btn" onClick={() => void onLogout()}>ออกจากระบบ</button></div><StaffPage user={user} /></>;
+}
+
+function PortalGuard({ onStaff }: { onStaff: () => void }) {
+  return <div className="parent-shell"><header className="parent-topbar"><a className="parent-brand" href="#/track"><div className="brand-mark">W<span /></div><div>WARWICK<span>INSTITUTE</span></div></a></header><main className="parent-main"><div className="card guard-card"><h1>หน้านี้ไม่พร้อมใช้งาน</h1><p>แท็บนี้กำลังติดตามคิวของคุณอยู่ · กลับไปที่หน้าคิวเพื่อดูสถานะล่าสุด</p><p className="parent-note">หากต้องการจองรอบใหม่หรือเข้าใช้งาน Staff กรุณาเปิดลิงก์หลักของ Warwick</p><a className="btn primary" href="#/track">กลับไปที่คิวของคุณ</a><p className="parent-note"><button type="button" className="text-btn" onClick={onStaff}>เข้าสู่ระบบ Staff</button></p></div></main></div>;
 }
 
 function BookPage() {
@@ -95,15 +178,6 @@ function BookPage() {
   return <><Header eyebrow="LET’S PLAN YOUR NEXT STEP" title="จอง Private Consult" description="พูดคุยกับอาจารย์ วางแผนการเรียนให้ตรงกับเป้าหมายของน้อง" /><div className="booking-hero"><div className="hero-copy"><span className="hero-tag"><BookOpen size={14} /> WARWICK INSTITUTE</span><h2 className="report-heading"><span>Student Performance Report</span><span>ประชุมรับผลการเรียนประจำ Cycle August - November 2026</span></h2><p>เลือกวิชาและช่วงเวลาที่สะดวก<br />แล้วให้ Warwick ช่วยวางแผนก้าวต่อไป</p><div className="hero-meta"><span><MapPin size={15} /> Warwick · 12A</span><span><Users size={15} /> จำนวน slots ตามรอบที่เลือก</span></div></div><div className="hero-art" aria-hidden="true"><div className="orbit orbit-one" /><div className="orbit orbit-two" /><div className="hero-ticket"><div className="ticket-top"><span>PRIVATE CONSULT</span><GraduationCap size={21} /></div><span className="ticket-line" /><div className="ticket-title">Your next<br /><em>chapter.</em></div><div className="ticket-bottom"><span>WARWICK INSTITUTE</span><ArrowUp size={28} /></div></div><div className="floating-seal"><Check size={19} /> Let's talk</div></div></div><div className="book-layout"><form onSubmit={submit} className="card booking-form"><SectionTitle number="01" title="ข้อมูลนักเรียนและผู้ปกครอง" note="กรุณากรอกข้อมูลให้ครบเพื่อเตรียมการปรึกษา" /><div className="field-grid"><label htmlFor="field-email">Email ผู้ปกครอง <b>*</b><UIInput id="field-email" type="email" name="email" size="xl" placeholder="parent@email.com" required maxLength={254} autoComplete="email" /></label><label htmlFor="field-wcode">Wcode <small>(ถ้ามี)</small><UIInput id="field-wcode" name="wcode" size="xl" placeholder="เช่น W1234" maxLength={40} /></label><label htmlFor="field-nickname">Nickname <b>*</b><UIInput id="field-nickname" name="nickname" size="xl" placeholder="ชื่อเล่นของน้อง" required maxLength={80} /></label><label htmlFor="field-school">School Name <b>*</b><UIInput id="field-school" name="school" size="xl" placeholder="ชื่อโรงเรียน" required maxLength={160} /></label></div><div className="form-divider" /><SectionTitle number="02" title="เลือกวิชาและช่วงเวลา Consult" note="เลือกช่วงเวลาที่สะดวก ทีมงานจะจัดลำดับคิวภายในช่วงเวลาที่เลือก" /><label className="field-label">ระดับการเรียน <b>*</b></label><div className="segmented level-picker">{(['Beginner', 'High Level'] as Level[]).map(l => <button type="button" aria-pressed={level === l} key={l} className={level === l ? 'active' : ''} onClick={() => chooseLevel(l)}><GraduationCap size={16} />{l}<span className="level-selected" aria-hidden="true">{level === l && <Check size={16} />}</span></button>)}</div><label className="field-label">วิชาที่ต้องการปรึกษา <b>*</b></label><div className="subject-grid">{SUBJECTS.map((s, i) => <button type="button" key={s.id} onClick={() => chooseSubject(s.id)} aria-pressed={subject === s.id} className={`subject-card ${subject === s.id ? 'chosen' : ''}`}><span className="subject-icon">{i === 0 ? '∑' : i === 1 ? 'Aa' : <BookOpen size={19} />}</span><strong>{s.label}</strong><span className="radio-mark">{subject === s.id && <span />}</span></button>)}</div><label className="field-label" htmlFor="consult-date">วันที่ Consult <b>*</b></label><div className="date-mode"><select id="consult-date" value={date} onChange={e => { setDate(e.target.value); setPeriod(''); }}>{allowedDates(level, subject).map(d => <option value={d} key={d}>{DATE_LABELS[d]}</option>)}</select><span>{modeFor(level, date) === 'On-site' ? <MapPin size={15} /> : <Video size={15} />}{modeFor(level, date)}</span></div><div className="period-heading"><label className="field-label">เลือกช่วงเวลา Private Consult <b>*</b></label><button type="button" className="text-btn" onClick={() => void refresh()} aria-label="รีเฟรชรอบว่าง"><RefreshCw size={13} />อัปเดตรอบว่าง</button></div><p id="consult-duration-note" className="consult-duration-note"><strong>1 ครอบครัวจะมีเวลา Consult บ้านละ 10 นาที</strong> เมื่อใกล้ถึงเวลาเจ้าหน้าที่จะติดต่อกลับไป</p>{periodError && <Notice error>{periodError}</Notice>}<div className="period-grid" role="group" aria-label="เลือกช่วงเวลา Private Consult" aria-describedby="consult-duration-note">{periods?.map(p => { const full = !p.available; return <button type="button" key={p.id} disabled={full} aria-pressed={periodId === p.id} className={`period-card ${full ? 'full' : ''} ${periodId === p.id ? 'chosen' : ''}`} onClick={() => setPeriod(p.id)}><Clock3 size={17} /><strong>{p.start}–{p.end}</strong><small className="period-capacity">{capacityFor(level, subject, date, p.id)} slots / รอบ</small><span>{full ? 'เต็มแล้ว' : periodId === p.id ? <><Check size={12} /> เลือกรอบนี้</> : 'ว่าง · เลือกได้'}</span></button>; }) ?? <p>กำลังตรวจสอบรอบว่าง…</p>}</div><p className="helper">รอบที่เลือกเป็นช่วงสำหรับเข้าคิว ลำดับคิวจะจัดสรรโดย Warwick Institute</p>{level === 'Beginner' && <div className="seminar-box" role="group" aria-labelledby="beginner-seminar-heading"><BookOpen size={24} aria-hidden="true" /><div><h3 id="beginner-seminar-heading">สำหรับนักเรียน Beginner</h3><p className="seminar-intro">เข้าร่วมสัมมนารวมก่อน Private Consult</p><div className="seminar-schedule">{seminarsFor(subject).map(s => <div className="seminar-time" key={s.subject}><span className="seminar-subject">SAT {s.subject}</span><strong className="seminar-date">{DATE_LABELS[s.date] ?? s.date}</strong><strong className="seminar-hour">{s.start}–{s.end} น.</strong></div>)}</div><label className="checkbox-label"><input type="checkbox" name="seminar" required /><span className="checkbox-mark" aria-hidden="true"><Check size={16} /></span><span>ยืนยันเข้าร่วมสัมมนารวมตามวิชาที่เลือก <b>*</b><small className="checkbox-state"><span className="unchecked-label">ยังไม่ได้ยืนยัน</span><span className="checked-label">ยืนยันแล้ว</span></small></span></label></div></div>}<div className="form-divider" /><SectionTitle number="03" title="คำถามถึงอาจารย์" note="อย่างน้อย 2 คำถาม เพื่อให้อาจารย์เตรียมคำแนะนำตรงประเด็น" /><div className="question-fields">{[1, 2, 3].map(n => <label key={n}>คำถามที่ {n} {n < 3 ? <b>*</b> : <small>(ไม่บังคับ)</small>}<textarea name={`question${n}`} required={n < 3} maxLength={1000} rows={2} placeholder={n === 1 ? 'เช่น น้องควรพัฒนาจุดไหนเพื่อไปถึงคะแนนเป้าหมาย?' : n === 2 ? 'เช่น ควรวางแผนเรียนและฝึกทำข้อสอบอย่างไรต่อไป?' : 'คำถามอื่น ๆ ที่อยากปรึกษาอาจารย์'} /></label>)}</div>{error && <Notice error>{error}</Notice>}<UIAction color="primary" pill={false} size="xl" type="submit" className="btn primary submit-booking" disabled={busy || !periodId}>{busy ? 'กำลังบันทึก…' : 'ยืนยันการจอง Private Consult'}<ArrowRight size={18} /></UIAction><p className="form-note"><ShieldCheck size={13} />ข้อมูลใช้สำหรับจัดกิจกรรมและเตรียมการปรึกษา</p></form><aside className="booking-aside"><div className="card summary-card"><div className="summary-heading"><Ticket size={19} /><h3>รอบที่คุณเลือก</h3></div><div className="summary-period">{periodId ? periodLabel(periodId, level, date) : 'เลือกช่วงเวลาที่สะดวก'}<span>{DATE_LABELS[date]}</span></div><dl><div><dt>ระดับ</dt><dd>{level}</dd></div><div><dt>วิชา</dt><dd>{subjectLabel(subject)}</dd></div><div><dt>รูปแบบ</dt><dd>{modeFor(level, date)}</dd></div>{periodId && <div><dt>จำนวน slots / รอบ</dt><dd>{capacityFor(level,subject,date,periodId)} slots</dd></div>}</dl><div className="summary-bottom"><ListOrdered size={18} /><p>หลังจองสำเร็จ ทีมงานจะจัดคิวให้<br /><strong>ติดตามคิวได้ผ่านลิงก์ของคุณ</strong></p></div></div><div className="how-it-works"><h3>เพียง 3 ขั้นตอน</h3>{[{ icon: CalendarDays, title: 'เลือกช่วงเวลาที่สะดวก', text: 'ดูจำนวน slots ที่ระบุในแต่ละรอบ' }, { icon: Mail, title: 'เก็บลิงก์ติดตามคิว', text: 'ใช้ลิงก์ส่วนตัวเพื่อดูคิวของคุณ' }, { icon: Users, title: 'พบอาจารย์เมื่อเรียกคิว', text: 'ทีมงานจัดลำดับภายในรอบที่เลือก' }].map((s, i) => <div className="how-step" key={s.title}><span><s.icon size={16} /></span><div><small>0{i + 1}</small><strong>{s.title}</strong><p>{s.text}</p></div></div>)}</div><div className="need-help"><CircleHelp size={19} /><div><strong>สอบถามเพิ่มเติม</strong><p>โทร. <a href="tel:026584880">02-658-4880</a></p></div></div></aside></div></>;
 }
 
-
-function StaffGate() {
-  const [user,setUser]=useState<StaffUser | null>(null); const [checking,setChecking]=useState(true); const [error,setError]=useState(''); const [busy,setBusy]=useState(false);
-  useEffect(()=>{let active=true;const expired=()=>setUser(null);window.addEventListener('staff-session-expired',expired);api.me().then(u=>{if(active)setUser(u);}).catch(()=>{}).finally(()=>{if(active)setChecking(false);});return()=>{active=false;window.removeEventListener('staff-session-expired',expired);};},[]);
-  async function login(e:FormEvent<HTMLFormElement>){e.preventDefault();const form=new FormData(e.currentTarget);setBusy(true);setError('');try{setUser(await api.login(String(form.get('username')),String(form.get('password'))));}catch(e){setError(message(e));}finally{setBusy(false);}}
-  if(checking)return <div className="empty">กำลังตรวจสอบสิทธิ์ Staff…</div>;
-  if(!user)return <><Header eyebrow="STAFF ACCESS" title="เข้าสู่ระบบ Staff" description="สำหรับทีม Warwick เพื่อจัดลำดับและควบคุมคิว"/><div className="card tracking-entry"><div className="round-icon"><ShieldCheck size={28}/></div><h2>Staff Login</h2><form onSubmit={login}><label htmlFor="staff-username">ชื่อผู้ใช้<UIInput id="staff-username" size="xl" name="username" required autoComplete="username" maxLength={100}/></label><label className="login-password" htmlFor="staff-password">รหัสผ่าน<UIInput id="staff-password" size="xl" type="password" name="password" required autoComplete="current-password" maxLength={72}/></label>{error&&<Notice error>{error}</Notice>}<UIAction color="primary" pill={false} size="xl" type="submit" className="btn primary" disabled={busy}>{busy?'กำลังเข้าสู่ระบบ…':'เข้าสู่ระบบ'}</UIAction></form></div></>;
-  return <><div className="staff-login-bar"><span><ShieldCheck size={15}/> {user.username}</span><button className="text-btn" onClick={async()=>{try{await api.logout();setUser(null);}catch(e){setError(message(e));}}}>ออกจากระบบ</button></div>{error&&<Notice error>{error}</Notice>}<StaffPage user={user}/></>;
-}
 
 function StaffTrackingLink({ bookingId }: { bookingId: string }) {
   const [url,setUrl] = useState(''); const [error,setError] = useState('');
