@@ -50,7 +50,6 @@ export function DisplayPage({ level: levelProp = '', date: dateProp = '', kiosk 
       <label>ระดับ<select value={level} onChange={e => { const next = e.target.value === 'High Level' ? 'High Level' : 'Beginner'; setLevel(next); setDateState(''); }}><option>Beginner</option><option>High Level</option></select></label>
       <label>วันกิจกรรม<select value={date} onChange={e => setDateState(e.target.value)}>{options.map(d => <option key={d} value={d}>{DATE_LABELS[d] ?? d}</option>)}</select></label>
       <div className="live-label"><span className="dot" /> อัปเดตอัตโนมัติ</div>
-      <button className="btn secondary" onClick={() => void refresh()}><RefreshCw size={15} /> รีเฟรช</button>
     </div>
   ) : null;
 
@@ -102,7 +101,10 @@ export function DisplayPage({ level: levelProp = '', date: dateProp = '', kiosk 
   return (
     <>
       <Header eyebrow="LIVE AT WARWICK" title="จอแสดงคิว" description="ติดตามรหัสคิวที่กำลังเรียก แยก SAT Math และ SAT Verbal">
-        <button className="btn secondary" onClick={() => void refresh()}><RefreshCw size={16} /> รีเฟรช</button>
+        <div className="header-actions">
+          <a className="btn secondary" href="#/track"><Ticket size={16} /> ติดตามคิวของคุณ</a>
+          <button className="btn secondary" onClick={() => void refresh()}><RefreshCw size={16} /> รีเฟรช</button>
+        </div>
       </Header>
       {controls}
       {board}
