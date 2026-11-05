@@ -3,7 +3,6 @@ package consult
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"net/url"
 	"sort"
 	"strings"
@@ -189,34 +188,20 @@ func (s *Service) Assign(ctx context.Context, scope Scope, ids []string, revisio
 		}
 		seen[id] = true
 	}
+	// Older cancelled rows can still hold a code. Release them atomically before
+	// finding a free number; active and completed bookings are never renumbered.
+	if err = releaseCancelledQueueCodes(ctx, tx, s.Config.Event.ID, actor); err != nil {
+		return err
+	}
+
 	for n, id := range ids {
 		b := eligible[id]
 		previous := state(b)
 		if b.QueueNo == nil {
-			prefix := "B"
-			if b.Level == "High Level" {
-				prefix = "H"
+			code, e := nextAvailableQueueCode(ctx, tx, b)
+			if e != nil {
+				return e
 			}
-			subject := "M"
-			if b.Subject == "Verbal" {
-				subject = "V"
-			}
-			if b.Subject == "Combined" {
-				subject = "MV"
-			}
-			prefix += "-" + subject
-			sequence := b.EventID + "/" + prefix
-			if _, err = tx.ExecContext(ctx, `INSERT INTO sequences(scope,value) VALUES($1,0) ON CONFLICT DO NOTHING`, sequence); err != nil {
-				return err
-			}
-			if _, err = tx.ExecContext(ctx, `UPDATE sequences SET value=value+1 WHERE scope=$1`, sequence); err != nil {
-				return err
-			}
-			var value int
-			if err = tx.QueryRowContext(ctx, `SELECT value FROM sequences WHERE scope=$1`, sequence).Scan(&value); err != nil {
-				return err
-			}
-			code := fmt.Sprintf("%s-%03d", prefix, value)
 			b.QueueNo = &code
 		}
 		b.Orders[scope.Stream] = n + 1
@@ -324,6 +309,9 @@ func (s *Service) Status(ctx context.Context, id, next string, revision int64, a
 		if next == "Cancelled" {
 			b.CancelledAt = timestamp
 			b.CancellationReason = reason
+			b.QueueNo = nil
+			b.Orders = map[string]int{}
+			b.Counter = ""
 		}
 		if next == "Waiting" {
 			b.Counter = ""

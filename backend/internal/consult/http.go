@@ -301,6 +301,25 @@ func (h *HTTP) Handler() http.Handler {
 		}
 		respond(w, 200, out)
 	})
+	m.HandleFunc("DELETE /api/staff/bookings/{id}/cancelled", func(w http.ResponseWriter, r *http.Request) {
+		_, ok := h.staff(w, r, true, true)
+		if !ok {
+			return
+		}
+		var in struct {
+			Revision     int64  `json:"expectedRevision"`
+			Confirmation string `json:"confirmation"`
+		}
+		if err := decode(w, r, &in); err != nil {
+			h.fail(w, r, err)
+			return
+		}
+		if err := h.Service.DeleteCancelledBooking(r.Context(), r.PathValue("id"), in.Revision, in.Confirmation); err != nil {
+			h.fail(w, r, err)
+			return
+		}
+		respond(w, 200, map[string]bool{"deleted": true})
+	})
 	m.HandleFunc("POST /api/staff/bookings/{id}/recovery", func(w http.ResponseWriter, r *http.Request) {
 		identity, ok := h.staff(w, r, true, true)
 		if !ok {

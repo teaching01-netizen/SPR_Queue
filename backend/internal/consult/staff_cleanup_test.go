@@ -104,8 +104,8 @@ func TestDeleteCompletedTestBookingAndKeepOtherCodes(t *testing.T) {
 	}
 	fresh := book(t, s, cleanupInput())
 	assign(t, s, Scope{done.Level, done.Date, done.PeriodID, "Math"}, other.Booking.ID, fresh.Booking.ID)
-	if *latest(t, s, fresh.Booking.ID).QueueNo != "B-M-003" {
-		t.Fatal("single deletion reused code")
+	if *latest(t, s, fresh.Booking.ID).QueueNo != "B-M-001" {
+		t.Fatal("single deletion did not reuse free code")
 	}
 	var count int
 	s.DB.QueryRow(`SELECT count(*) FROM audit WHERE booking_id=$1`, done.ID).Scan(&count)

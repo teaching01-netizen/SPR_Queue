@@ -51,7 +51,7 @@ func TestRecoveryCancelCompletedReturnsOnlyOneSlot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out.Status != "Cancelled" || out.CancelledAt == "" || out.CompletedAt != before.CompletedAt || !reflect.DeepEqual(out.Stages, before.Stages) || *out.QueueNo != *before.QueueNo {
+	if out.Status != "Cancelled" || out.CancelledAt == "" || out.CompletedAt != before.CompletedAt || !reflect.DeepEqual(out.Stages, before.Stages) || out.QueueNo != nil {
 		t.Fatal("cancellation lost historical data", out)
 	}
 	for _, b := range others {
@@ -194,7 +194,7 @@ func TestRecoveryCombinedCapacityValidationAndSendingGuard(t *testing.T) {
 		t.Fatal(err)
 	}
 	out, err := s.RecoverBooking(testCtx, cancelled.ID, recoveryInput(cancelled, "reset-checkin"), "RD1")
-	if err != nil || out.CurrentSubject != "Verbal" || *out.QueueNo != *cancelled.QueueNo {
+	if err != nil || out.CurrentSubject != "Verbal" || out.QueueNo != nil {
 		t.Fatal("combined recovery", err)
 	}
 	for _, change := range []func(*BookingRecovery){func(i *BookingRecovery) { i.Confirmation = "" }, func(i *BookingRecovery) { i.Reason = "" }, func(i *BookingRecovery) { i.Action = "clear-all" }, func(i *BookingRecovery) { i.Revision-- }} {

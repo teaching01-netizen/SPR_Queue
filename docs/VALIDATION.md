@@ -1,5 +1,18 @@
 # Validation — PostgreSQL / OpenAI UI update — 13 October 2026
 
+## Reusable queue codes and permanent cancelled deletion — 5 November 2026
+
+- Queue allocation uses the lowest free code in the existing event/level/booked-subject namespace inside the shared write transaction. Occupied codes, including completed/archived/no-show rows, are not renumbered. Cancel/release/delete returns a code. Obsolete sequence high-water values do not affect new allocation. Legacy cancelled codes are released atomically before allocation with audit.
+- Normal cancellation and Admin cancellation clear code/order/counter; cancelled restoration never reclaims the previous code. Admin check-in reset defaults to releasing its code in the UI, with an option to keep the code for a non-cancelled real parent. Identity/tracking links remain stable until permanent deletion.
+- New Admin-only DELETE cancelled endpoint requires CSRF/origin, exact record confirmation, current event/revision, Cancelled state and notification-idle guard. It removes exactly the selected booking, audit and outbox. Tracking becomes unavailable. Active/completed records cannot be deleted through this endpoint.
+- 17 selected integration tests passed with race detector on isolated PGlite via pgx/PostgreSQL wire protocol. Five new tests verify interior gaps 002/004, stale sequence 999, restored/released codes, legacy cancellation, separate prefixes, concurrent saves/conflict retry without duplicate codes, production-mode permanent deletion, unrelated parents unchanged, stale/wrong-event/Sending guards and HTTP Admin/CSRF/origin/bulk-field rejection. Updated cancellation/restoration/deletion regression cases and Combined/archive/capacity/recovery cases passed.
+- Go test -race ./..., go vet ./..., server build, TypeScript check and Vite production build passed. Chromium against isolated Go server verified default release checkbox, confirmation gating, reset/cancel releases, permanent delete, fresh assignment of B-V-001/B-V-002, operator controls hidden, 390px dialogs without horizontal overflow and zero page errors.
+- No production booking, Tar entry, parent data, Railway configuration or live Sheet was modified. No database migration or new variables required. Mail/Sheets disabled for test fixtures. Existing 5-second frontend polling and Sheets sync unchanged.
+
+### Earlier validation history
+
+The sections below record prior versions; the 5 November behavior above supersedes earlier notes about retaining cancelled codes or never reusing deleted numbers.
+
 ## Selective booking recovery — 4 November 2026
 
 - Added Admin-only per-booking recovery with CSRF/origin protection, exact booking confirmation, mandatory reason, event/revision checks and full previous-state audit. No database reset, migration or global sequence changes.

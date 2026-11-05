@@ -117,21 +117,36 @@ function canEditBooking(b: Booking) {
     && !Object.values(b.stages).some(s => s?.startedAt || s?.endedAt);
 }
 type RecoveryValues = Parameters<typeof api.recoverBooking>[1];
+function CancelledDeleteModal({booking:b,busy,save,close}:{booking:Booking;busy:boolean;save:()=>Promise<void>;close:()=>void}) {
+  const [confirmed,setConfirmed]=useState(false);const [error,setError]=useState('');
+  async function submit(e:FormEvent){e.preventDefault();setError('');try{await save();}catch(e){setError(message(e));}}
+  return <Modal title="ลบรายการยกเลิกถาวร" close={close}>
+    <p><strong>{b.nickname}</strong> · Wcode: {b.wcode||'ไม่ได้กรอก'}<br/>รหัสคิว: <strong>{b.queueNo||'คืนรหัสแล้ว / ยังไม่จัดคิว'}</strong><br/>{subjectLabel(b.subject)} · {DATE_LABELS[b.date]??b.date} · {periodLabel(b.periodId,b.level,b.date)}</p>
+    <Notice error>ลบเฉพาะรายการนี้ รวมประวัติและงานเมล ดึงกลับไม่ได้และลิงก์ติดตามเดิมจะใช้ไม่ได้ รหัสที่ว่างนำกลับไปใช้ตอนบันทึกคิวได้ ข้อมูลคนอื่นยังอยู่เหมือนเดิม</Notice>
+    <form className="booking-edit-form" onSubmit={submit}>
+      <label className="checkbox-label"><input type="checkbox" checked={confirmed} required disabled={busy} onChange={e=>setConfirmed(e.target.checked)}/><span className="checkbox-mark" aria-hidden="true"><Check size={16}/></span><span>ยืนยันลบถาวรเฉพาะ <strong>{b.nickname}</strong> · {b.wcode||b.id}</span></label>
+      {error&&<Notice error>{error}</Notice>}
+      <button type="submit" className="btn destructive wide" disabled={busy||!confirmed}>{busy?'กำลังลบ…':'ยืนยันลบรายการนี้ถาวร'}</button>
+    </form>
+  </Modal>;
+}
 function BookingRecoveryModal({booking:b,busy,save,close}:{booking:Booking;busy:boolean;save:(values:RecoveryValues)=>Promise<void>;close:()=>void}) {
   const [action,setAction]=useState<'cancel'|'reset-checkin'>('reset-checkin');
+  const [releaseCode,setReleaseCode]=useState(true);
   const initial=Object.entries(b.stages).filter(([,stage])=>stage?.startedAt).sort((a,c)=>(a[1]?.startedAt??'').localeCompare(c[1]?.startedAt??''))[0]?.[0];
   const [first,setFirst]=useState<'Math'|'Verbal'>(initial==='Math'||initial==='Verbal'?initial:b.currentSubject);
   const [reason,setReason]=useState('');const [confirmed,setConfirmed]=useState(false);const [error,setError]=useState('');
-  async function submit(e:FormEvent) {e.preventDefault();setError('');try{await save({action,reason,expectedRevision:b.revision??-1,confirmation:`RECOVER BOOKING ${b.id}`,...(action==='reset-checkin'&&b.subject==='Combined'?{startSubject:first}:{})});}catch(e){setError(message(e));}}
+  async function submit(e:FormEvent) {e.preventDefault();setError('');try{await save({action,reason,releaseQueueCode:releaseCode,expectedRevision:b.revision??-1,confirmation:`RECOVER BOOKING ${b.id}`,...(action==='reset-checkin'&&b.subject==='Combined'?{startSubject:first}:{})});}catch(e){setError(message(e));}}
   return <Modal title="คืนสถานะ / คืนที่ว่างเฉพาะราย" close={close}>
     <p><strong>{b.nickname}</strong> · Wcode: {b.wcode||'ไม่ได้กรอก'}<br/>รหัสคิว: <strong>{b.queueNo||'ยังไม่จัดคิว'}</strong><br/>{subjectLabel(b.subject)} · {DATE_LABELS[b.date]??b.date} · {periodLabel(b.periodId,b.level,b.date)==='—'?b.periodId:periodLabel(b.periodId,b.level,b.date)}</p>
     <form className="booking-edit-form" onSubmit={submit}>
-      <label htmlFor="recovery-action">ต้องการจัดการอย่างไร<select id="recovery-action" value={action} disabled={busy} onChange={e=>{setAction(e.target.value as 'cancel'|'reset-checkin');setConfirmed(false);setError('');}}><option value="reset-checkin">คืนเป็นรอเช็กอิน · ใช้รหัสคิวเดิม</option><option value="cancel" disabled={b.status==='Cancelled'}>ยกเลิกรายการนี้และคืนที่ว่าง</option></select></label>
-      {action==='reset-checkin'?<Notice>กลับเป็นลงทะเบียนแล้ว / รอเช็กอิน ล้างสถานะเช็กอินและการปรึกษาที่ทดลองในรายการนี้ เก็บรหัส {b.queueNo||'การจอง'} และลิงก์เดิม ต้องเช็กอินและจัดลำดับใหม่ก่อนเรียกคิว</Notice>:<Notice error>ยกเลิกเฉพาะรายการนี้และคืนที่ว่าง แม้เคยกดจบแล้ว ประวัติเดิมเก็บไว้ตรวจสอบ รายการจะอยู่ในแท็บยกเลิกและไม่อยู่ใน Excel / Google Sheets</Notice>}
+      <label htmlFor="recovery-action">ต้องการจัดการอย่างไร<select id="recovery-action" value={action} disabled={busy} onChange={e=>{setAction(e.target.value as 'cancel'|'reset-checkin');setConfirmed(false);setError('');}}><option value="reset-checkin">คืนเป็นรอเช็กอิน</option><option value="cancel" disabled={b.status==='Cancelled'}>ยกเลิกรายการนี้และคืนที่ว่าง</option></select></label>
+      {action==='reset-checkin'?<Notice>กลับเป็นลงทะเบียนแล้ว / รอเช็กอิน ล้างสถานะเช็กอินและการปรึกษาที่ทดลองในรายการนี้ เก็บข้อมูลการจองและลิงก์เดิม {releaseCode||b.status==='Cancelled'?'คืนรหัสเดิมเพื่อให้ระบบจัดรหัสใหม่เมื่อบันทึกคิว':'เก็บรหัสคิวเดิมไว้'} ต้องเช็กอินและจัดลำดับใหม่ก่อนเรียกคิว</Notice>:<Notice error>ยกเลิกเฉพาะรายการนี้และคืนที่ว่าง แม้เคยกดจบแล้ว ประวัติเดิมเก็บไว้ตรวจสอบ คืนรหัสคิวด้วย รายการจะอยู่ในแท็บยกเลิกและไม่อยู่ใน Excel / Google Sheets</Notice>}
+      {action==='reset-checkin'&&b.status!=='Cancelled'&&<label className="checkbox-label"><input type="checkbox" checked={releaseCode} disabled={busy} onChange={e=>{setReleaseCode(e.target.checked);setConfirmed(false);}}/><span className="checkbox-mark" aria-hidden="true"><Check size={16}/></span><span>คืนรหัสคิวเดิม เพื่อจัดรหัสใหม่ตอนบันทึกคิว</span></label>}
       {action==='reset-checkin'&&b.subject==='Combined'&&<label htmlFor="recovery-first">วิชาแรกหลังคืนสถานะ<select id="recovery-first" value={first} disabled={busy} onChange={e=>setFirst(e.target.value as 'Math'|'Verbal')}><option value="Math">Math ก่อน → Verbal</option><option value="Verbal">Verbal ก่อน → Math</option></select></label>}
       <label htmlFor="recovery-reason">เหตุผล <b>*</b><textarea id="recovery-reason" value={reason} required rows={2} maxLength={500} disabled={busy} placeholder="เช่น ทดลองระบบ หรือกดจบเคสผิด" onChange={e=>setReason(e.target.value)}/></label>
       <label className="checkbox-label"><input type="checkbox" checked={confirmed} required disabled={busy} onChange={e=>setConfirmed(e.target.checked)}/><span className="checkbox-mark" aria-hidden="true"><Check size={16}/></span><span>ยืนยันจัดการเฉพาะ <strong>{b.nickname}</strong> · {b.queueNo||b.wcode||'รายการนี้'}</span></label>
-      <p>ข้อมูลคนอื่นและตัวนับรหัสคิวไม่เปลี่ยน การทำรายการนี้ไม่ส่งอีเมลยืนยันซ้ำ</p>
+      <p>รหัสที่คืนแล้วให้คนอื่นใช้ได้ ระบบเลือกเลขว่างน้อยที่สุดเมื่อบันทึกคิว รหัสของคนอื่นที่ยังใช้อยู่ไม่เปลี่ยน และไม่ส่งอีเมลยืนยันซ้ำ</p>
       {error&&<Notice error>{error}</Notice>}
       <button type="submit" className={`btn ${action==='cancel'?'destructive':'primary'} wide`} disabled={busy||!confirmed||!reason.trim()}>{busy?'กำลังบันทึก…':action==='cancel'?'ยืนยันยกเลิกและคืนที่ว่าง':'ยืนยันคืนเป็นรอเช็กอิน'}</button>
     </form>
@@ -232,6 +247,7 @@ function StaffPage({ user }: { user: StaffUser }) {
   const [edit, setEdit] = useState<Booking | null>(null);
   const [studentEdit,setStudentEdit] = useState<Booking|null>(null);
   const [recovery,setRecovery]=useState<Booking|null>(null);
+  const [cancelledDelete,setCancelledDelete]=useState<Booking|null>(null);
   const [restore, setRestore] = useState<Booking | null>(null);
   const [restoreError, setRestoreError] = useState('');
   const [archivedOnly,setArchivedOnly] = useState(false);
@@ -317,6 +333,7 @@ function StaffPage({ user }: { user: StaffUser }) {
   }
   function managementButtons(b: Booking) {
     return <>
+      {user.role==='admin'&&b.status==='Cancelled'&&<button className="mini-btn danger" disabled={inactive||hasDraft} onClick={()=>{setError('');setDetailId(null);setCancelledDelete(b);}}>ลบถาวร / คืนรหัสคิว</button>}
       {user.role==='admin'&&<button className="mini-btn" disabled={inactive||hasDraft} onClick={()=>{setError('');setDetailId(null);setRecovery(b);}}>คืนสถานะ / คืนที่ว่าง</button>}
       <button className="mini-btn" disabled={inactive || hasDraft} onClick={()=>{setError('');setDetailId(null);setStudentEdit(b);}}>แก้ข้อมูลผู้ลงทะเบียน</button>
       {canEditBooking(b) && <button className="mini-btn" disabled={inactive || hasDraft} onClick={() => { setError(''); setDetailId(null); setEdit(b); }}>แก้วัน / เวลา / วิชา</button>}
@@ -325,10 +342,17 @@ function StaffPage({ user }: { user: StaffUser }) {
       {canManageTestData && <button className="mini-btn danger" disabled={inactive || hasDraft} onClick={() => {setError('');setDetailId(null);setDeleteTest(b);setDeleteConfirmed(false);}}>ลบข้อมูลทดสอบ</button>}
     </>;
   }
+  async function deleteCancelled() {
+    if(!cancelledDelete||busyRef.current)return;
+    busyRef.current=true;setBusy(true);setError('');setNotice('');
+    try {await api.deleteCancelledBooking(cancelledDelete.id,cancelledDelete.revision??-1);await refresh();setCancelledDelete(null);clearDraft();setNotice('ลบรายการยกเลิกถาวรแล้ว · รหัสที่ว่างจะใช้ได้เมื่อบันทึกคิวครั้งถัดไป');}
+    catch(e){await refresh();throw e;}
+    finally{busyRef.current=false;setBusy(false);}
+  }
   async function saveRecovery(values:RecoveryValues) {
     if(!recovery||busyRef.current)return;
     busyRef.current=true;setBusy(true);setError('');setNotice('');
-    try {const changed=await api.recoverBooking(recovery.id,values);await refresh();setRecovery(null);clearDraft();setView(changed.status==='Cancelled'?'cancelled':'checkin');setSubjectFilter(changed.subject);setCheckLevel(changed.level);setCheckDate(changed.date);setSearch('');setStatusFilter('All');setNotice(values.action==='cancel'?'ยกเลิกเฉพาะรายการนี้และคืนที่ว่างแล้ว':'คืนเป็นรอเช็กอินแล้ว · ใช้รหัสคิวเดิม เช็กอินและจัดลำดับใหม่ก่อนเรียก');}
+    try {const changed=await api.recoverBooking(recovery.id,values);await refresh();setRecovery(null);clearDraft();setView(changed.status==='Cancelled'?'cancelled':'checkin');setSubjectFilter(changed.subject);setCheckLevel(changed.level);setCheckDate(changed.date);setSearch('');setStatusFilter('All');setNotice(values.action==='cancel'?'ยกเลิกเฉพาะรายการนี้และคืนที่ว่างแล้ว':values.releaseQueueCode||recovery.status==='Cancelled'?'คืนเป็นรอเช็กอินแล้ว · คืนรหัสเดิมแล้ว บันทึกคิวเพื่อรับรหัสใหม่':'คืนเป็นรอเช็กอินแล้ว · ใช้รหัสเดิม เช็กอินและจัดลำดับใหม่ก่อนเรียก');}
     catch(e){await refresh();throw e;}
     finally{busyRef.current=false;setBusy(false);}
   }
@@ -423,7 +447,7 @@ function StaffPage({ user }: { user: StaffUser }) {
     {(error || loadError) && <Notice error>{error || loadError}</Notice>}{notice && <Notice>{notice}</Notice>}
     <p className="staff-updated">{loading ? 'กำลังโหลดรายการ…' : updated ? `อัปเดตล่าสุด ${updated.toLocaleTimeString('th-TH')} · อัปเดตอัตโนมัติทุก 5 วินาที` : ''}</p>
     {view === 'completed' && <><Notice>รายการจบแล้วเก็บสถานะ เวลา และรหัสคิวเดิม การเก็บประวัติไม่คืน slot และไม่เปิดเคสใหม่</Notice><label className="completed-history-filter">ดูรายการจบแล้ว<select aria-label="กรองรายการจบแล้ว" value={archivedOnly ? 'archived' : 'all'} onChange={e => setArchivedOnly(e.target.value === 'archived')}><option value="all">ทั้งหมด · รวมที่เก็บไว้</option><option value="archived">เก็บประวัติแล้ว</option></select></label></>}
-    {view === 'cancelled' && <Notice>รายการที่เอาออกเก็บไว้ที่นี่และคืนที่ว่างแล้ว · เปลี่ยนใจกลับมาได้ด้วยปุ่มคืนการจอง โดยต้องมีที่ว่างอีกครั้ง</Notice>}
+    {view === 'cancelled' && <Notice>รายการยกเลิกคืนที่ว่างและรหัสคิวแล้ว · คืนการจองได้หากยังไม่ลบถาวรและมีที่ว่าง โดยต้องบันทึกคิวเพื่อรับรหัสใหม่ · Admin ลบถาวรเฉพาะรายได้</Notice>}
     {view !== 'queue' ? <div className="checkin-sections">{[...sections.entries()].map(([key, rows]) => {
       const first = rows[0]; const checked = rows.filter(b => b.checkedInAt && !['Cancelled', 'No-show'].includes(b.status)).length;
       return <section className="card checkin-section" key={key}>
@@ -446,6 +470,7 @@ function StaffPage({ user }: { user: StaffUser }) {
     {startChoice && <Modal title="เลือกวิชาเริ่มต้น Math + Verbal" close={() => setStartChoice(null)}><p><strong>{startChoice.nickname}</strong> จะเริ่ม <strong>{otherSubject(startChoice.currentSubject)}</strong> ก่อน แล้วส่งต่อ {startChoice.currentSubject} เมื่อวิชาแรกเสร็จ</p>{error && <Notice error>{error}</Notice>}<Notice>รหัสคิวและการเช็กอินคงเดิม ต้องบันทึก / จัดคิวในห้องใหม่อีกครั้งก่อนเรียก</Notice><button className="btn primary wide" disabled={inactive} onClick={() => void run(async () => { await api.startSubject(startChoice.id, otherSubject(startChoice.currentSubject), startChoice.revision ?? -1); setStartChoice(null); }, `เลือกเริ่ม ${otherSubject(startChoice.currentSubject)} แล้ว · เปิดห้องนี้เพื่อจัดคิว`)}>ยืนยันเริ่ม {otherSubject(startChoice.currentSubject)} ก่อน</button></Modal>}
     {edit && <BookingEditModal booking={edit} busy={inactive} save={saveEdit} close={() => setEdit(null)} />}
     {studentEdit && <StudentDetailsModal key={studentEdit.id} booking={studentEdit} busy={inactive} save={saveStudentDetails} close={()=>{if(!busyRef.current)setStudentEdit(null);}} />}
+    {cancelledDelete&&<CancelledDeleteModal key={cancelledDelete.id} booking={cancelledDelete} busy={inactive} save={deleteCancelled} close={()=>{if(!busyRef.current)setCancelledDelete(null);}}/>}
     {recovery&&<BookingRecoveryModal key={recovery.id} booking={recovery} busy={inactive} save={saveRecovery} close={()=>{if(!busyRef.current)setRecovery(null);}}/>}
     {restore && <Modal title="คืนการจอง" close={() => setRestore(null)}><p>คืนรายการของ <strong>{restore.nickname}</strong><br />{subjectLabel(restore.subject)} · {DATE_LABELS[restore.date] ?? restore.date} · {periodText(restore)}</p><Notice>ตรวจที่ว่างใหม่ เก็บข้อมูลและลิงก์เดิม ถ้าเคยเช็กอินแล้วในวันเดิมจะกลับเข้ารอ และต้องจัดลำดับคิวอีกครั้ง</Notice>{restoreError && <Notice error>{restoreError}</Notice>}<button className="btn primary wide" disabled={inactive} onClick={() => void restoreBooking()}>ยืนยันคืนการจอง</button>{canEditBooking(restore) && <button className="btn secondary wide" disabled={inactive} onClick={() => { setRestore(null); setEdit(restore); }}>เลือกวัน / เวลา / วิชาอื่น</button>}</Modal>}
     {deleteTest && <Modal title="ลบข้อมูลทดสอบรายการนี้" close={() => setDeleteTest(null)}><p>ลบ <strong>{deleteTest.nickname}</strong> · {deleteTest.queueNo || 'ยังไม่จัดคิว'}<br />{subjectLabel(deleteTest.subject)} · {DATE_LABELS[deleteTest.date]} · {periodText(deleteTest)}</p><Notice>ใช้เฉพาะฐานข้อมูลเทส ลบการจองและประวัติรายการนี้ถาวร คืนที่ว่าง และลิงก์ติดตามเดิมใช้ไม่ได้ รวมถึงรายการที่ปรึกษาจบแล้ว ลำดับเลขคิวอื่นคงเดิม</Notice>{['Calling','Serving'].includes(deleteTest.status) && <Notice>คิวนี้กำลังเรียกหรือปรึกษาอยู่ การลบจะเอาคิวนี้ออกจากห้องทดสอบด้วย</Notice>}{error && <Notice error>{error}</Notice>}<label className="test-delete-confirm"><input type="checkbox" checked={deleteConfirmed} onChange={e => setDeleteConfirmed(e.target.checked)} />ยืนยันว่าต้องการลบรายการทดสอบนี้ถาวร</label><button className="btn destructive wide" disabled={inactive || !deleteConfirmed || !canManageTestData} onClick={() => void run(async () => {await api.deleteTestBooking(deleteTest.id,deleteTest.revision ?? -1);setDeleteTest(null);clearDraft();},'ลบรายการทดสอบแล้ว · ข้อมูลรายการอื่นคงเดิม')}>ยืนยันลบข้อมูลทดสอบ</button></Modal>}

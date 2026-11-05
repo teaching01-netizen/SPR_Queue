@@ -255,11 +255,11 @@ func TestRestoreCheckedInNoShowAndPartialCombined(t *testing.T) {
 	c := book(t, s, testInput())
 	assign(t, s, defaultScope(), c.Booking.ID)
 	b := transition(t, s, c.Booking.ID, "Waiting")
-	code, check := *b.QueueNo, *b.CheckedInAt
+	check := *b.CheckedInAt
 	b = transition(t, s, b.ID, "No-show")
 	b = cancelBooking(t, s, b)
 	b, err := s.RestoreBooking(testCtx, b.ID, b.Revision, "staff")
-	if err != nil || b.Status != "Waiting" || *b.QueueNo != code || *b.CheckedInAt != check || len(b.Orders) != 0 {
+	if err != nil || b.Status != "Waiting" || b.QueueNo != nil || *b.CheckedInAt != check || len(b.Orders) != 0 {
 		t.Fatal("no-show restore", b, err)
 	}
 	i := testInput()
@@ -273,7 +273,6 @@ func TestRestoreCheckedInNoShowAndPartialCombined(t *testing.T) {
 	transition(t, s, c.Booking.ID, "Serving")
 	b = transition(t, s, c.Booking.ID, "Completed")
 	ended := b.Stages["Math"].EndedAt
-	code = *b.QueueNo
 	b = cancelBooking(t, s, b)
 	in := editValues(b)
 	in.Subject = "Verbal"
@@ -282,7 +281,7 @@ func TestRestoreCheckedInNoShowAndPartialCombined(t *testing.T) {
 		t.Fatal("partial consult history reassigned", err)
 	}
 	b, err = s.RestoreBooking(testCtx, b.ID, b.Revision, "staff")
-	if err != nil || b.Status != "Waiting" || b.CurrentSubject != "Verbal" || b.Stages["Math"].EndedAt != ended || *b.QueueNo != code {
+	if err != nil || b.Status != "Waiting" || b.CurrentSubject != "Verbal" || b.Stages["Math"].EndedAt != ended || b.QueueNo != nil {
 		t.Fatal("partial restore", b, err)
 	}
 	scope.Stream = "Verbal"

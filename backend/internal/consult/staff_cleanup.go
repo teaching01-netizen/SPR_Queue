@@ -87,7 +87,7 @@ func (s *Service) DeleteTestBooking(ctx context.Context, id string, revision int
 			return err
 		}
 	}
-	// Keep sequences so deleting one test cannot reuse a queue code belonging to other rows.
+	// Allocation reads existing bookings, so the deleted code becomes reusable.
 	if err = bump(ctx, tx); err != nil {
 		return err
 	}

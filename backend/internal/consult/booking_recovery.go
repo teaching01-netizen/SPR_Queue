@@ -7,17 +7,17 @@ import (
 )
 
 type BookingRecovery struct {
-	Action       string `json:"action"`
-	Reason       string `json:"reason"`
-	StartSubject string `json:"startSubject,omitempty"`
-	Revision     int64  `json:"expectedRevision"`
-	Confirmation string `json:"confirmation"`
+	Action           string `json:"action"`
+	Reason           string `json:"reason"`
+	StartSubject     string `json:"startSubject,omitempty"`
+	ReleaseQueueCode bool   `json:"releaseQueueCode"`
+	Revision         int64  `json:"expectedRevision"`
+	Confirmation     string `json:"confirmation"`
 }
 
 // RecoverBooking is exposed only through the authenticated Admin endpoint.
-// It changes one booking and preserves its identity, tracking token and code.
-// The complete pre-change state is retained in audit; sequences and other
-// bookings are never renumbered, deleted or updated.
+// It changes one booking, preserving identity and tracking; codes can be released.
+// The pre-change state is retained in audit. Other bookings are not renumbered.
 func (s *Service) RecoverBooking(ctx context.Context, id string, in BookingRecovery, actor string) (Booking, error) {
 	if in.Action != "cancel" && in.Action != "reset-checkin" {
 		return Booking{}, problem("VALIDATION_ERROR", "เลือกยกเลิกคืนที่ว่าง หรือคืนเป็นรอเช็กอิน", 400)
@@ -56,10 +56,11 @@ func (s *Service) RecoverBooking(ctx context.Context, id string, in BookingRecov
 		if in.StartSubject != "" {
 			return b, problem("VALIDATION_ERROR", "การยกเลิกไม่ใช้วิชาเริ่มต้น", 400)
 		}
-		if b.Status == "Cancelled" {
+		if b.Status == "Cancelled" && b.QueueNo == nil {
 			return b, nil
 		}
 		b.Status = "Cancelled"
+		b.QueueNo = nil
 		b.CancelledAt = stamp()
 		b.CancellationReason = in.Reason
 		b.Counter = ""
@@ -91,6 +92,9 @@ func (s *Service) RecoverBooking(ctx context.Context, id string, in BookingRecov
 			if e = availableForBooking(ctx, tx, b, period.Capacity); e != nil {
 				return b, e
 			}
+		}
+		if in.ReleaseQueueCode || b.Status == "Cancelled" {
+			b.QueueNo = nil
 		}
 		b.Status = "Booked"
 		b.CheckedInAt = nil

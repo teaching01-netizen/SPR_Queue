@@ -190,6 +190,7 @@ func (s *Service) RestoreBooking(ctx context.Context, id string, revision int64,
 		return b, err
 	}
 	previous := bookingManagementState(b)
+	b.QueueNo = nil // A cancelled code may already belong to a different parent.
 	b.Status = "Booked"
 	if b.CheckedInAt != nil {
 		b.Status = "Waiting"
