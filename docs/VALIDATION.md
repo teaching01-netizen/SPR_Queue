@@ -314,3 +314,10 @@ User requested reverting the cost-saving per-page cadence. Booking/edit availabi
 - The normal (non-kiosk) queue board header now shows a `ติดตามคิวของคุณ` button next to `รีเฟรช`, linking back to `#/track`. The redundant per-control refresh button was removed so the board has a single refresh action.
 - Kiosk mode (`#/display?...&kiosk=1`) deliberately keeps no back button and no other chrome: a wall screen is not a navigation surface. Verified by DOM dump (no `ติดตามคิวของคุณ` text in kiosk mode).
 - Verified in headless Chrome: desktop 1280x900 renders the button in the header; a true 390px viewport (measured inside a 390px iframe) reports `scrollWidth == clientWidth == 390` with the header wrapping correctly, so no horizontal overflow. Earlier 390px window screenshots were clipped by Chrome's minimum headless window width, not by page layout. Full node suite 50/50 and `npm run build` pass.
+
+## Board back-link returns to the parent's own queue — 5 November 2026
+
+- The tracking token is now remembered per device (`spr.v1.track.token`, accepted only at 32-100 characters, matching the server's token bounds) whenever a tracking link is opened. The board's `ติดตามคิวของคุณ` button links to `#/track/<remembered-token>` and falls back to the paste-link entry only when no token is known.
+- The token is deliberately never appended to the board URL: a board URL gets copied, projected and screenshotted, and the tracking token must not ride along. The private token stays in localStorage on the parent's own device, next to the snapshot cache that already used it as a key.
+- A `404` from `/api/track` clears the remembered token (and the snapshot), so a deleted link cannot leave the board pointing at a dead queue; the next board render degrades to the entry page.
+- Integration verified against a mock API in headless Chrome with a persistent profile: opening the parent link then the board yields `href="#/track/<token>"`; a fresh profile yields `href="#/track"`; opening a dead link shows the invalid-link card and the following board render falls back to `#/track`. Unit suite 54/54 and the production build pass.

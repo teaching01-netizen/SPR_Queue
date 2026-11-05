@@ -200,6 +200,47 @@ test('the staff identity cache renders the portal shell before the probe resolve
   assert.equal(readStaffIdentity(), null);
 });
 
+test('the last tracking token is remembered so the board can link back to it', async () => {
+  const { readTrackToken, writeTrackToken, clearTrackToken, isTrackToken, TRACK_TOKEN_KEY } = await storageMod;
+  await reset();
+  const token = 'HgJEdiw1NSwRbG9ZQwXTfujQBW_kbgv7B-mrBMqpQWA';
+  assert.equal(isTrackToken(token), true);
+  assert.equal(isTrackToken('too-short'), false);
+  assert.equal(isTrackToken('x'.repeat(101)), false);
+  assert.equal(isTrackToken(null), false);
+  assert.equal(readTrackToken(), null);
+  writeTrackToken(token);
+  assert.equal(readTrackToken(), token);
+  assert.equal(local.getItem(TRACK_TOKEN_KEY), JSON.stringify({ token }));
+  clearTrackToken();
+  assert.equal(readTrackToken(), null);
+});
+
+test('a malformed remembered token is ignored instead of being linked', async () => {
+  const { readTrackToken, writeTrackToken, TRACK_TOKEN_KEY } = await storageMod;
+  await reset();
+  writeTrackToken('short');
+  assert.equal(readTrackToken(), null);
+  local.setItem(TRACK_TOKEN_KEY, JSON.stringify({ token: 42 }));
+  assert.equal(readTrackToken(), null);
+  local.setItem(TRACK_TOKEN_KEY, '{"token":');
+  assert.equal(readTrackToken(), null);
+});
+
+test('trackHref never invents a token and encodes a real one', async () => {
+  const { trackHref } = await routesMod;
+  assert.equal(trackHref(null), '#/track');
+  assert.equal(trackHref(undefined), '#/track');
+  assert.equal(trackHref('tok/en'), '#/track/tok%2Fen');
+});
+
+test('the public board URL never carries the private tracking token', async () => {
+  const { displayHref } = await routesMod;
+  const href = displayHref('Beginner', '2026-11-07', true);
+  assert.equal(href, '#/display?level=Beginner&date=2026-11-07&kiosk=1');
+  assert.equal(href.includes('token'), false);
+});
+
 test('a storage quota failure never breaks writing to the cache', async () => {
   const { writeSnapshot, readSnapshot } = await storageMod;
   await reset();

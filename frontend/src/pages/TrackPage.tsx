@@ -1,10 +1,11 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowRight, CheckCheck, CircleHelp, Clock3, Monitor, Phone, Radio, RefreshCw, Ticket, Users, X } from 'lucide-react';
 import { api } from '../api';
 import { clockLabel, freshnessBand } from '../freshness';
 import type { Freshness } from '../freshness';
 import { useLive, useNow, useOnline } from '../hooks';
-import { displayHref } from '../routes';
+import { displayHref, trackHref } from '../routes';
+import { clearTrackToken, isTrackToken, readTrackToken, writeTrackToken } from '../storage';
 import { Badge, Header, Notice } from '../ui';
 import type { ParentView } from '../types';
 
@@ -45,6 +46,7 @@ export function TrackPage({ token, staffView = false }: { token: string; staffVi
 function TrackEntry() {
   const [link, setLink] = useState('');
   const [inputError, setInputError] = useState('');
+  const [remembered] = useState(() => readTrackToken());
   return (
     <>
       <Header eyebrow="YOUR PRIVATE QUEUE" title="ติดตามคิวของคุณ" description="เปิดลิงก์ติดตามคิวที่ได้รับหลังจองสำเร็จ" />
@@ -52,6 +54,11 @@ function TrackEntry() {
         <div className="round-icon"><Ticket size={28} /></div>
         <h2>คิวของคุณ อยู่ที่นี่</h2>
         <p>ใช้ลิงก์ส่วนตัวเพื่อดูรหัสคิวของคุณ<br />และคิวที่กำลังเรียกในวิชาที่ปรึกษา</p>
+        {remembered && (
+          <a className="btn primary remembered-queue" href={trackHref(remembered)}>
+            <Ticket size={17} /> เปิดคิวล่าสุดของฉัน
+          </a>
+        )}
         <form
           onSubmit={e => {
             e.preventDefault();
@@ -76,6 +83,9 @@ function TrackEntry() {
 
 function TrackTicket({ token, staffView = false }: { token: string; staffView?: boolean }) {
   const fetcher = useCallback(() => api.track(token), [token]);
+  useEffect(() => {
+    if (isTrackToken(token)) writeTrackToken(token);
+  }, [token]);
   const { data, error, errorStatus, loading, updated, refresh } = useLive(fetcher, { refreshOnResume: true, cacheKey: token });
   const online = useOnline();
   const now = useNow(5000);
@@ -102,6 +112,7 @@ function TrackTicket({ token, staffView = false }: { token: string; staffView?: 
   );
 
   if (errorStatus === 404) {
+    if (readTrackToken() === token) clearTrackToken();
     return (
       <>
         {header}

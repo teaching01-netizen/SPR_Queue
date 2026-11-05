@@ -4,7 +4,8 @@ import { api } from '../api';
 import { allDates, DATE_LABELS, modeFor } from '../config';
 import { clockLabel, freshnessBand } from '../freshness';
 import { useLive, useNow, useOnline, useWakeLock } from '../hooks';
-import { readDisplayScope, writeDisplayScope } from '../storage';
+import { trackHref } from '../routes';
+import { readDisplayScope, readTrackToken, writeDisplayScope } from '../storage';
 import { Header, Notice } from '../ui';
 import { FreshnessBanner } from './TrackPage';
 import type { Level } from '../types';
@@ -102,7 +103,7 @@ export function DisplayPage({ level: levelProp = '', date: dateProp = '', kiosk 
     <>
       <Header eyebrow="LIVE AT WARWICK" title="จอแสดงคิว" description="ติดตามรหัสคิวที่กำลังเรียก แยก SAT Math และ SAT Verbal">
         <div className="header-actions">
-          <a className="btn secondary" href="#/track"><Ticket size={16} /> ติดตามคิวของคุณ</a>
+          <a className="btn secondary" href={trackHref(readTrackToken())}><Ticket size={16} /> ติดตามคิวของคุณ</a>
           <button className="btn secondary" onClick={() => void refresh()}><RefreshCw size={16} /> รีเฟรช</button>
         </div>
       </Header>

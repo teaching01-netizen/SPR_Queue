@@ -116,3 +116,26 @@ export function writeStaffIdentity(identity: StaffIdentity): void {
 export function clearStaffIdentity(): void {
   removeKey(STAFF_CACHE_KEY);
 }
+
+// Last tracking token opened on this device. It lets the public board offer a
+// "back to my queue" link without embedding the private token in a URL that can
+// be shared, screenshotted or projected.
+export const TRACK_TOKEN_KEY = `${PREFIX}track.token`;
+
+export function isTrackToken(value: string | null | undefined): boolean {
+  return typeof value === 'string' && value.length >= 32 && value.length <= 100;
+}
+
+export function readTrackToken(): string | null {
+  const cached = readJSON<{ token?: string }>(TRACK_TOKEN_KEY);
+  return isTrackToken(cached && cached.token) ? (cached as { token: string }).token : null;
+}
+
+export function writeTrackToken(token: string): void {
+  if (!isTrackToken(token)) return;
+  writeJSON(TRACK_TOKEN_KEY, { token });
+}
+
+export function clearTrackToken(): void {
+  removeKey(TRACK_TOKEN_KEY);
+}

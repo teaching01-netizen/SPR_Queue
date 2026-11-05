@@ -60,6 +60,10 @@ export function shouldGuard(page: string, parentTab: boolean, staff: boolean): b
   return !staff && parentTab && (page === 'book' || page === 'staff');
 }
 
+export function trackHref(token: string | null | undefined): string {
+  return token ? `#/track/${encodeURIComponent(token)}` : '#/track';
+}
+
 export function displayHref(level: string, date: string, kiosk = false): string {
   const params = new URLSearchParams();
   if (level) params.set('level', level);
