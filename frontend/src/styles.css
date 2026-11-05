@@ -27,7 +27,7 @@
 
 .login-password{margin-top:18px}
 
-.field-grid label>div,.tracking-entry label>div{margin-top:8px}.field-grid label>div input,.tracking-entry label>div input{margin-top:0;border:0;padding:0;box-shadow:none;background:transparent}.field-grid label>div,.tracking-entry label>div{min-height:46px;padding-inline:12px;border-radius:9px;border-color:#dfe5eb}
+.field-grid label>div,.tracking-entry label>div,.staff-login label>div{margin-top:8px}.field-grid label>div input,.tracking-entry label>div input,.staff-login label>div input{margin-top:0;border:0;padding:0;box-shadow:none;background:transparent}.field-grid label>div,.tracking-entry label>div,.staff-login label>div{min-height:46px;padding-inline:12px;border-radius:9px;border-color:#dfe5eb}
 
 .period-capacity{font-size:10px;font-weight:600;color:var(--ink)}.period-card.full .period-capacity{color:#a6afb9}
 
