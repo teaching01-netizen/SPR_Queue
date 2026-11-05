@@ -9,7 +9,7 @@ export class ApiError extends Error { constructor(public code: string, message: 
 async function request<T>(path: string, method = 'GET', body?: unknown, headers: Record<string,string> = {}): Promise<T> {
   const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 15000);
   try {
-    const response = await fetch(`${BASE}${path}`, { method, credentials: 'include', signal: controller.signal, headers: { Accept: 'application/json', ...(body === undefined ? {} : {'Content-Type':'application/json'}), ...(csrfToken ? {'X-CSRF-Token':csrfToken} : {}), ...headers }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+    const response = await fetch(`${BASE}${path}`, { method, credentials: 'include', cache: 'no-store', signal: controller.signal, headers: { Accept: 'application/json', ...(body === undefined ? {} : {'Content-Type':'application/json'}), ...(csrfToken ? {'X-CSRF-Token':csrfToken} : {}), ...headers }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
     const json = await response.json().catch(() => null);
     if (!response.ok) { if (response.status === 401 && path !== '/api/auth/login') window.dispatchEvent(new Event('staff-session-expired')); throw new ApiError(json?.error?.code ?? 'HTTP_ERROR', json?.error?.message ?? 'เชื่อมต่อระบบไม่สำเร็จ', response.status); }
     if (!json) throw new Error('Backend ไม่ได้ส่งข้อมูล JSON กรุณาตรวจสอบการเชื่อมต่อ API');
@@ -45,6 +45,7 @@ export const api = {
   track: (token:string) => request<ParentView>(`/api/track/${encodeURIComponent(token)}`),
   staffList: () => request<StaffPacket>('/api/staff/bookings'),
   staffExport,
+  async swapBookings(id:string,input:{otherBookingId:string;expectedRevision:number;otherExpectedRevision:number;reason:string;confirmation:string}) {const r=await request<{bookings:Booking[]}>(`/api/staff/bookings/${encodeURIComponent(id)}/swap`,'POST',input);updated();return r.bookings;},
   async recoverBooking(id:string,input:{action:'cancel'|'reset-checkin';reason:string;startSubject?:'Math'|'Verbal';releaseQueueCode?:boolean;expectedRevision:number;confirmation:string}) {const b=await request<Booking>(`/api/staff/bookings/${encodeURIComponent(id)}/recovery`,'POST',input);updated();return b;},
   async deleteCancelledBooking(id:string,expectedRevision:number) {await request(`/api/staff/bookings/${encodeURIComponent(id)}/cancelled`,'DELETE',{expectedRevision,confirmation:`DELETE CANCELLED BOOKING ${id}`});updated();},
   async editStudentDetails(id:string,input:{wcode:string;nickname:string;school:string;email:string;expectedRevision:number}) { const b=await request<Booking>(`/api/staff/bookings/${encodeURIComponent(id)}/student-details`,'PATCH',input);updated();return b; },

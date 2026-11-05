@@ -58,7 +58,7 @@ function BookPage() {
 
 function TrackPage({ token }: { token: string }) {
   const fetcher = useCallback(() => token ? api.track(token) : Promise.resolve(null), [token]);
-  const { data, error, loading, refresh } = useLive(fetcher, { enabled: !!token }); const [link, setLink] = useState(''); const [inputError, setInputError] = useState('');
+  const { data, error, loading, refresh } = useLive(fetcher, { enabled: !!token, refreshOnResume: true }); const [link, setLink] = useState(''); const [inputError, setInputError] = useState('');
   if (!token) return <><Header eyebrow="YOUR PRIVATE QUEUE" title="ติดตามคิวของคุณ" description="เปิดลิงก์ติดตามคิวที่ได้รับหลังจองสำเร็จ" /><div className="card tracking-entry"><div className="round-icon"><Ticket size={28} /></div><h2>คิวของคุณ อยู่ที่นี่</h2><p>ใช้ลิงก์ส่วนตัวเพื่อดูรหัสคิวของคุณ<br />และคิวที่กำลังเรียกในวิชาที่ปรึกษา</p><form onSubmit={e => { e.preventDefault(); const match = link.match(/#\/track\/(.+)$/); if (!match) { setInputError('กรุณาวางลิงก์ติดตามคิวให้ครบ'); return; } location.hash = `#/track/${match[1]}`; }}><label htmlFor="tracking-link">ลิงก์ติดตามคิว</label><input id="tracking-link" type="text" placeholder="วางลิงก์ที่ได้รับหลังการจอง" value={link} onChange={e => setLink(e.target.value)} required /><button className="btn primary">เปิดคิวของคุณ<ArrowRight size={17} /></button></form>{inputError && <Notice error>{inputError}</Notice>}</div></>;
   return <><Header eyebrow="YOUR PRIVATE QUEUE" title="ติดตามคิวของคุณ" description="กรุณารอติดตามรหัสคิว เมื่อถึงคิวทีมงานจะเรียกเข้าพบอาจารย์"><button className="btn secondary" onClick={() => void refresh()}><RefreshCw size={16} />รีเฟรช</button></Header>{error ? <div className="card empty"><CircleHelp size={34} /><h2>โหลดสถานะคิวไม่สำเร็จ</h2><p>{error}</p><button className="btn secondary" onClick={() => void refresh()}>ลองอีกครั้ง</button><a className="btn secondary" href="#/track">กลับหน้าติดตามคิว</a></div> : loading || !data ? <div className="card empty">กำลังโหลดสถานะคิว…</div> : <div className="tracking-layout"><div className="parent-ticket"><div className="parent-ticket-header"><span><Ticket size={18} /> YOUR QUEUE</span><span>SAT {data.currentSubject}</span></div><p>คิวของคุณ</p><div className={`parent-queue ${!data.queueNo ? 'preparing' : ''}`}>{data.queueNo || 'กำลังจัดคิว'}</div><div className="parent-state"><Badge status={data.status} /></div><div className="ticket-perforation" /><div className="parent-bottom">{data.status === 'Calling' ? <><Radio size={23} /><h2>ถึงคิวของคุณแล้ว</h2><p>กรุณาไปที่ {data.counter || `${data.currentSubject} Room`}</p></> : data.status === 'Serving' ? <><Users size={23} /><h2>กำลังปรึกษาอาจารย์</h2><p>ทีม Warwick พร้อมช่วยวางแผนก้าวต่อไป</p></> : data.status === 'Completed' ? <><CheckCheck size={23} /><h2>เสร็จสิ้นการปรึกษา</h2><p>ขอบคุณที่มาพูดคุยกับ Warwick</p></> : data.status === 'Cancelled' ? <><X size={23} /><h2>การจองถูกยกเลิก</h2><p>ติดต่อทีม Warwick หากต้องการสอบถาม</p></> : data.status === 'No-show' ? <><CircleHelp size={23} /><h2>กรุณาติดต่อทีมงาน</h2><p>ทีมงานจะช่วยตรวจสอบสถานะคิว</p></> : <><Clock3 size={23} /><h2>{data.queueNo ? 'กรุณารอเรียกคิว' : 'ยืนยันการจองแล้ว'}</h2><p>{data.queueNo ? 'ติดตามรหัสคิวปัจจุบันได้จากหน้านี้' : 'ทีมงานกำลังเตรียมรหัสคิวของคุณ'}</p></>}</div></div><div className="card current-queue-card"><div className="live-label"><span className="dot" /> LIVE QUEUE</div><h2>คิวปัจจุบัน</h2><p>SAT {data.currentSubject}</p>{data.currentQueues.length ? data.currentQueues.map(q => <div className="current-number" key={q.queueNo}><strong>{q.queueNo}</strong><span>{q.state === 'Serving' ? 'กำลังปรึกษา' : 'กำลังเรียก'}</span></div>) : <div className="current-number"><strong className="no-queue">—</strong><span>ยังไม่มีคิวที่กำลังเรียก</span></div>}{data.queueCountState !== 'inactive' && <div className="queue-remaining" aria-live="polite"><h3>อีกกี่คิวถึงคุณ · SAT {data.currentSubject}</h3>{data.queuesUntilTurn !== null && data.queuesUntilTurn !== undefined ? data.queuesUntilTurn === 0 ? <p className="remaining-current">ถึงคิวของคุณแล้ว</p> : <><div className="remaining-value"><span>เหลืออีก</span><strong>{data.queuesUntilTurn}</strong><span>คิวถึงคุณ</span></div><p>{data.queuesUntilTurn === 1 ? 'คุณเป็นคิวถัดไป · เตรียมพร้อมรอประกาศ' : 'นับตามลำดับคิวปัจจุบันของห้องนี้'}</p></> : <p className="remaining-unavailable">{data.queueCountState === 'awaiting-check-in' ? 'เช็กอินกับ Staff ก่อน ระบบจึงจะคำนวณคิวให้' : data.queueCountState === 'staff-review' ? 'กรุณาติดต่อ Staff เพื่อตรวจลำดับคิวของคุณ' : 'กำลังจัดลำดับคิวสำหรับวิชานี้'}</p>}<small>จำนวนปรับตามการเรียก ข้าม ยกเลิก และจัดลำดับใหม่ · กรุณารอประกาศเรียกคิว</small></div>}<div className="live-footer"><RefreshCw size={13} />อัปเดตอัตโนมัติทุก 5 วินาทีเมื่อเปิดหน้านี้</div></div></div>}</>;
 }
@@ -117,6 +117,29 @@ function canEditBooking(b: Booking) {
     && !Object.values(b.stages).some(s => s?.startedAt || s?.endedAt);
 }
 type RecoveryValues = Parameters<typeof api.recoverBooking>[1];
+const canSwapBooking = (b:Booking) => ['Booked','Waiting','No-show'].includes(b.status) && !b.archivedAt && !Object.values(b.stages).some(s=>s?.startedAt||s?.endedAt);
+type SwapValues = Parameters<typeof api.swapBookings>[1];
+function BookingSwapModal({booking:a,bookings,busy,save,close}:{booking:Booking;bookings:Booking[];busy:boolean;save:(v:SwapValues)=>Promise<void>;close:()=>void}) {
+  const [other,setOther]=useState<Booking|null>(null);const [search,setSearch]=useState('');
+  const [reason,setReason]=useState('');const [confirmed,setConfirmed]=useState(false);const [error,setError]=useState('');
+  const time=(b:Booking)=>`${DATE_LABELS[b.date]??b.date} · ${periodLabel(b.periodId,b.level,b.date)}`;
+  const eligible=bookings.filter(b=>b.id!==a.id&&b.level===a.level&&b.subject===a.subject&&canSwapBooking(b)&&(b.date!==a.date||b.periodId!==a.periodId));
+  const choices=[...(other?[other]:[]),...eligible.filter(b=>b.id!==other?.id)].filter(b=>b.id===other?.id||`${b.nickname} ${b.wcode} ${b.queueNo??''} ${b.email} ${time(b)}`.toLowerCase().includes(search.trim().toLowerCase()));
+  async function submit(e:FormEvent){e.preventDefault();if(!other)return;setError('');try{await save({otherBookingId:other.id,expectedRevision:a.revision??-1,otherExpectedRevision:other.revision??-1,reason,confirmation:`SWAP BOOKINGS ${a.id} ${other.id}`});}catch(e){setError(message(e));}}
+  return <Modal title="สลับช่วงเวลาระหว่างสองราย" close={close}>
+    <p><strong>{a.nickname}</strong> · {a.wcode||'ไม่ได้กรอก Wcode'} · {a.queueNo||'ยังไม่จัดคิว'}<br/>{a.level} · {subjectLabel(a.subject)}<br/>ปัจจุบัน: {time(a)}</p>
+    <form className="booking-edit-form" onSubmit={submit}>
+      <label htmlFor="swap-search">ค้นหาคนที่ต้องการสลับ<input id="swap-search" value={search} disabled={busy} placeholder="ชื่อ / Wcode / รหัสคิว / เวลา" onChange={e=>setSearch(e.target.value)}/></label>
+      <label htmlFor="swap-other">สลับกับ <b>*</b><select id="swap-other" required value={other?.id??''} disabled={busy} onChange={e=>{setOther(eligible.find(b=>b.id===e.target.value)??null);setConfirmed(false);setError('');}}><option value="">เลือกผู้ลงทะเบียนอีกคน</option>{choices.map(b=><option key={b.id} value={b.id}>{b.nickname} · {b.wcode||'ไม่มี Wcode'} · {b.queueNo||'ยังไม่จัดคิว'} · {time(b)}</option>)}</select></label>
+      {!eligible.length&&!other&&<Notice>ยังไม่มีรายการวิชาและระดับเดียวกันในช่วงเวลาอื่นที่สลับได้ รายการที่เริ่มปรึกษา จบ หรือยกเลิกแล้วจะไม่แสดง</Notice>}
+      {other&&<Notice><strong>ผลหลังสลับ</strong><p>{a.nickname} → {time(other)}<br/>{other.nickname} → {time(a)}</p>บันทึกทั้งคู่พร้อมกัน แม้รอบเต็ม รหัสคิว ข้อมูลนักเรียน และลิงก์ติดตามยังเป็นของแต่ละคน ต้องจัดลำดับใหม่ในทั้งสองช่วงเวลา หากเปลี่ยนวันต้องเช็กอินใหม่ ระบบจะส่งอีเมลยืนยันเวลาใหม่เมื่อเปิดบริการส่งเมลไว้</Notice>}
+      <label htmlFor="swap-reason">เหตุผล <b>*</b><textarea id="swap-reason" required maxLength={500} rows={2} value={reason} disabled={busy} placeholder="เช่น ผู้ปกครองทั้งสองรายตกลงสลับช่วงเวลา" onChange={e=>setReason(e.target.value)}/></label>
+      <label className="checkbox-label"><input type="checkbox" required checked={confirmed} disabled={busy||!other} onChange={e=>setConfirmed(e.target.checked)}/><span className="checkbox-mark" aria-hidden="true"><Check size={16}/></span><span>ยืนยันว่า <strong>{a.nickname}</strong> และ <strong>{other?.nickname??'ผู้ลงทะเบียนที่เลือก'}</strong> ตกลงสลับช่วงเวลากันแล้ว</span></label>
+      {error&&<Notice error>{error}</Notice>}
+      <button type="submit" className="btn primary wide" disabled={busy||!other||!confirmed||!reason.trim()}>{busy?'กำลังบันทึก…':'ยืนยันสลับช่วงเวลาทั้งสองราย'}</button>
+    </form>
+  </Modal>;
+}
 function CancelledDeleteModal({booking:b,busy,save,close}:{booking:Booking;busy:boolean;save:()=>Promise<void>;close:()=>void}) {
   const [confirmed,setConfirmed]=useState(false);const [error,setError]=useState('');
   async function submit(e:FormEvent){e.preventDefault();setError('');try{await save();}catch(e){setError(message(e));}}
@@ -248,6 +271,7 @@ function StaffPage({ user }: { user: StaffUser }) {
   const [studentEdit,setStudentEdit] = useState<Booking|null>(null);
   const [recovery,setRecovery]=useState<Booking|null>(null);
   const [cancelledDelete,setCancelledDelete]=useState<Booking|null>(null);
+  const [swap,setSwap]=useState<Booking|null>(null);
   const [restore, setRestore] = useState<Booking | null>(null);
   const [restoreError, setRestoreError] = useState('');
   const [archivedOnly,setArchivedOnly] = useState(false);
@@ -333,6 +357,7 @@ function StaffPage({ user }: { user: StaffUser }) {
   }
   function managementButtons(b: Booking) {
     return <>
+      {canSwapBooking(b)&&<button className="mini-btn" disabled={inactive||hasDraft} onClick={()=>{setError('');setDetailId(null);setSwap(b);}}>สลับช่วงเวลากับอีกคน</button>}
       {user.role==='admin'&&b.status==='Cancelled'&&<button className="mini-btn danger" disabled={inactive||hasDraft} onClick={()=>{setError('');setDetailId(null);setCancelledDelete(b);}}>ลบถาวร / คืนรหัสคิว</button>}
       {user.role==='admin'&&<button className="mini-btn" disabled={inactive||hasDraft} onClick={()=>{setError('');setDetailId(null);setRecovery(b);}}>คืนสถานะ / คืนที่ว่าง</button>}
       <button className="mini-btn" disabled={inactive || hasDraft} onClick={()=>{setError('');setDetailId(null);setStudentEdit(b);}}>แก้ข้อมูลผู้ลงทะเบียน</button>
@@ -341,6 +366,13 @@ function StaffPage({ user }: { user: StaffUser }) {
       {b.status === 'Completed' && <button className="mini-btn" disabled={inactive || hasDraft} onClick={() => void run(() => api.archiveCompleted(b.id,!b.archivedAt,b.revision ?? -1),b.archivedAt ? 'นำรายการกลับมาแสดงแล้ว · สถานะยังเป็นเสร็จสิ้น' : 'เก็บรายการแล้ว · เปิดดูได้ในแท็บรายการจบแล้ว')}>{b.archivedAt ? 'นำกลับมาแสดง' : 'เก็บรายการจบแล้ว'}</button>}
       {canManageTestData && <button className="mini-btn danger" disabled={inactive || hasDraft} onClick={() => {setError('');setDetailId(null);setDeleteTest(b);setDeleteConfirmed(false);}}>ลบข้อมูลทดสอบ</button>}
     </>;
+  }
+  async function saveSwap(values:SwapValues) {
+    if(!swap||busyRef.current)return;
+    busyRef.current=true;setBusy(true);setError('');setNotice('');
+    try {await api.swapBookings(swap.id,values);await refresh();setSwap(null);clearDraft();setView('checkin');setSubjectFilter('All');setCheckLevel('All');setCheckDate('All');setSearch('');setStatusFilter('All');setNotice('สลับช่วงเวลาทั้งสองรายแล้ว · กรุณาจัดลำดับคิวใหม่ในทั้งสองช่วงเวลา');}
+    catch(e){await refresh();throw e;}
+    finally{busyRef.current=false;setBusy(false);}
   }
   async function deleteCancelled() {
     if(!cancelledDelete||busyRef.current)return;
@@ -470,6 +502,7 @@ function StaffPage({ user }: { user: StaffUser }) {
     {startChoice && <Modal title="เลือกวิชาเริ่มต้น Math + Verbal" close={() => setStartChoice(null)}><p><strong>{startChoice.nickname}</strong> จะเริ่ม <strong>{otherSubject(startChoice.currentSubject)}</strong> ก่อน แล้วส่งต่อ {startChoice.currentSubject} เมื่อวิชาแรกเสร็จ</p>{error && <Notice error>{error}</Notice>}<Notice>รหัสคิวและการเช็กอินคงเดิม ต้องบันทึก / จัดคิวในห้องใหม่อีกครั้งก่อนเรียก</Notice><button className="btn primary wide" disabled={inactive} onClick={() => void run(async () => { await api.startSubject(startChoice.id, otherSubject(startChoice.currentSubject), startChoice.revision ?? -1); setStartChoice(null); }, `เลือกเริ่ม ${otherSubject(startChoice.currentSubject)} แล้ว · เปิดห้องนี้เพื่อจัดคิว`)}>ยืนยันเริ่ม {otherSubject(startChoice.currentSubject)} ก่อน</button></Modal>}
     {edit && <BookingEditModal booking={edit} busy={inactive} save={saveEdit} close={() => setEdit(null)} />}
     {studentEdit && <StudentDetailsModal key={studentEdit.id} booking={studentEdit} busy={inactive} save={saveStudentDetails} close={()=>{if(!busyRef.current)setStudentEdit(null);}} />}
+    {swap&&<BookingSwapModal key={swap.id} booking={swap} bookings={bookings} busy={inactive} save={saveSwap} close={()=>{if(!busyRef.current)setSwap(null);}}/>}
     {cancelledDelete&&<CancelledDeleteModal key={cancelledDelete.id} booking={cancelledDelete} busy={inactive} save={deleteCancelled} close={()=>{if(!busyRef.current)setCancelledDelete(null);}}/>}
     {recovery&&<BookingRecoveryModal key={recovery.id} booking={recovery} busy={inactive} save={saveRecovery} close={()=>{if(!busyRef.current)setRecovery(null);}}/>}
     {restore && <Modal title="คืนการจอง" close={() => setRestore(null)}><p>คืนรายการของ <strong>{restore.nickname}</strong><br />{subjectLabel(restore.subject)} · {DATE_LABELS[restore.date] ?? restore.date} · {periodText(restore)}</p><Notice>ตรวจที่ว่างใหม่ เก็บข้อมูลและลิงก์เดิม ถ้าเคยเช็กอินแล้วในวันเดิมจะกลับเข้ารอ และต้องจัดลำดับคิวอีกครั้ง</Notice>{restoreError && <Notice error>{restoreError}</Notice>}<button className="btn primary wide" disabled={inactive} onClick={() => void restoreBooking()}>ยืนยันคืนการจอง</button>{canEditBooking(restore) && <button className="btn secondary wide" disabled={inactive} onClick={() => { setRestore(null); setEdit(restore); }}>เลือกวัน / เวลา / วิชาอื่น</button>}</Modal>}

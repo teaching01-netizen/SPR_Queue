@@ -320,6 +320,23 @@ func (h *HTTP) Handler() http.Handler {
 		}
 		respond(w, 200, map[string]bool{"deleted": true})
 	})
+	m.HandleFunc("POST /api/staff/bookings/{id}/swap", func(w http.ResponseWriter, r *http.Request) {
+		identity, ok := h.staff(w, r, true, false)
+		if !ok {
+			return
+		}
+		var in BookingSwap
+		if err := decode(w, r, &in); err != nil {
+			h.fail(w, r, err)
+			return
+		}
+		out, err := h.Service.SwapBookings(r.Context(), r.PathValue("id"), in, identity.User.Username)
+		if err != nil {
+			h.fail(w, r, err)
+			return
+		}
+		respond(w, 200, map[string]any{"bookings": out})
+	})
 	m.HandleFunc("POST /api/staff/bookings/{id}/recovery", func(w http.ResponseWriter, r *http.Request) {
 		identity, ok := h.staff(w, r, true, true)
 		if !ok {

@@ -10,7 +10,7 @@ export function createPoller({ fetch: fetchData, interval, available,
 }) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let flight: Promise<void> | null = null;
-  let stopped = false, dirty = false, failures = 0, lastSuccess = -Infinity, retryAt = 0;
+  let stopped = false, dirty = false, urgent = false, failures = 0, lastSuccess = -Infinity, retryAt = 0;
   const clear = () => { if (timer !== undefined) cancel(timer); timer = undefined; };
   const delay = () => failures ? Math.min(120000, 15000 * 2 ** Math.min(failures, 3)) : interval();
   const plan = () => {
@@ -23,20 +23,22 @@ export function createPoller({ fetch: fetchData, interval, available,
     clear();
     flight = (async () => {
       do {
-        dirty = false;
+        dirty = false; urgent = false;
         try { await fetchData(); failures = 0; lastSuccess = now(); retryAt = 0; }
         catch { failures++; retryAt = now() + delay(); }
-      } while (dirty && !stopped && available() && failures === 0);
+      } while (dirty && !stopped && available() && (failures === 0 || urgent));
     })().finally(() => { flight = null; plan(); });
     return flight;
   }
   return {
     refresh,
-    // A mutation during a read needs one fresh read afterwards; clicks/focus do not.
+    // A mutation or forced foreground refresh during a read queues one fresh read.
     invalidate() { dirty = true; if (!flight) void refresh(); },
-    resume() {
+    resume(force = false) {
       clear();
-      if (stopped || !available() || flight) return;
+      if (stopped || !available()) return;
+      if (force) { dirty = true; urgent = true; if (!flight) void refresh(); return; }
+      if (flight) return;
       if (dirty || (failures ? now() >= retryAt : now() - lastSuccess >= interval())) void refresh();
       else timer = schedule(() => { void refresh(); }, failures ? retryAt - now() : interval() - (now() - lastSuccess));
     },

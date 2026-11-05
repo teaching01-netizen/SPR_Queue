@@ -67,3 +67,27 @@ test('cleanup during a request cannot schedule another read or mutation followup
   h.poller.invalidate();h.poller.stop();gate.resolve();await f;await h.tick(60000);
   assert.equal(h.calls,1);assert.equal(h.tasks,0);
 });
+
+test('forced parent foreground refresh reads immediately inside five seconds and restarts normal cadence',async()=>{
+  const h=await harness();await h.poller.refresh();await h.tick(1000);
+  h.poller.resume(true);await flush();assert.equal(h.calls,2);
+  await h.tick(4999);assert.equal(h.calls,2);await h.tick(1);assert.equal(h.calls,3);h.poller.stop();
+});
+test('foreground events during a slow read coalesce and force one newer read without overlap',async()=>{
+  const gates=[deferred(),deferred()];let n=0;
+  const h=await harness(5000,()=>gates[n++]?.promise);const first=h.poller.refresh();
+  h.poller.resume(true);h.poller.resume(true);await flush();assert.equal(h.calls,1);
+  gates[0].resolve();await flush();assert.equal(h.calls,2);
+  gates[1].resolve();await first;assert.equal(h.calls,2);assert.equal(h.tasks,1);h.poller.stop();
+});
+test('foreground refresh queued during a failed old read retries immediately once',async()=>{
+  const gate=deferred();let n=0;
+  const h=await harness(5000,async()=>{if(n++===0){await gate.promise;throw new Error('old request failed');}});
+  const first=h.poller.refresh();h.poller.resume(true);gate.resolve();await first;
+  assert.equal(h.calls,2);await h.tick(5000);assert.equal(h.calls,3);h.poller.stop();
+});
+test('forced foreground refresh respects hidden state and stopped cleanup',async()=>{
+  const h=await harness();await h.poller.refresh();h.visible(false);h.poller.resume(true);await flush();assert.equal(h.calls,1);
+  h.visible(true);h.poller.resume(true);await flush();assert.equal(h.calls,2);
+  h.poller.stop();h.poller.resume(true);await h.tick(10000);assert.equal(h.calls,2);
+});

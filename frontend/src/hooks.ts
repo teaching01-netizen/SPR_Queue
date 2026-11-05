@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPoller, LIVE_POLL_INTERVAL_MS } from './polling';
 
-type LiveOptions = { enabled?: boolean };
-export function useLive<T>(fetcher: () => Promise<T>, { enabled = true }: LiveOptions = {}) {
+type LiveOptions = { enabled?: boolean; refreshOnResume?: boolean };
+export function useLive<T>(fetcher: () => Promise<T>, { enabled = true, refreshOnResume = false }: LiveOptions = {}) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -12,27 +12,32 @@ export function useLive<T>(fetcher: () => Promise<T>, { enabled = true }: LiveOp
 
   useEffect(() => {
     if (!enabled) return;
-    let active = true;
+    let active = true, requestEpoch = 0;
     setData(null); setError(''); setLoading(true); setUpdated(null);
     const poller = createPoller({
       available: () => !document.hidden && navigator.onLine !== false,
       interval: () => LIVE_POLL_INTERVAL_MS,
       async fetch() {
+        const epoch = requestEpoch;
         try {
           const next = await fetcher();
-          if (active) { setData(next); setError(''); setUpdated(new Date()); }
+          if (active && epoch === requestEpoch) { setData(next); setError(''); setUpdated(new Date()); }
         } catch (e) {
-          if (active) setError(e instanceof Error ? e.message : 'โหลดข้อมูลไม่สำเร็จ');
+          if (active && epoch === requestEpoch) setError(e instanceof Error ? e.message : 'โหลดข้อมูลไม่สำเร็จ');
           throw e;
-        } finally { if (active) setLoading(false); }
+        } finally { if (active && epoch === requestEpoch) setLoading(false); }
       },
     });
     pollerRef.current = poller;
-    const resume = () => poller.resume();
+    const resume = () => {
+      if (refreshOnResume && !document.hidden && navigator.onLine !== false) { requestEpoch++; setLoading(true); setError(''); }
+      poller.resume(refreshOnResume);
+    };
     const invalidate = () => poller.invalidate();
     document.addEventListener('visibilitychange', resume);
     window.addEventListener('focus', resume);
     window.addEventListener('online', resume);
+    window.addEventListener('pageshow', resume);
     window.addEventListener('offline', resume);
     window.addEventListener('queue-updated', invalidate);
     void poller.refresh();
@@ -41,9 +46,10 @@ export function useLive<T>(fetcher: () => Promise<T>, { enabled = true }: LiveOp
       document.removeEventListener('visibilitychange', resume);
       window.removeEventListener('focus', resume);
       window.removeEventListener('online', resume);
+      window.removeEventListener('pageshow', resume);
       window.removeEventListener('offline', resume);
       window.removeEventListener('queue-updated', invalidate);
     };
-  }, [fetcher, enabled]);
+  }, [fetcher, enabled, refreshOnResume]);
   return { data, error, loading, updated, refresh };
 }
