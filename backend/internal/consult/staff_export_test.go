@@ -278,7 +278,7 @@ func TestHTTPStaffExportAllRecordsAndAuthorization(t *testing.T) {
 		}
 	}
 	after, err := s.StaffList(testCtx)
-	if err != nil || !reflect.DeepEqual(before, after) {
+	if err != nil || !sameStaffState(before, after) {
 		t.Fatal("export changed booking/queue/revision", err)
 	}
 	if _, err := s.DB.ExecContext(testCtx, `DELETE FROM sessions WHERE token_hash=$1`, digest(id.Token)); err != nil {

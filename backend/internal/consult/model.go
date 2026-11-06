@@ -142,6 +142,12 @@ type StaffView struct {
 	CanManageTestData bool      `json:"canManageTestData"`
 	Bookings          []Booking `json:"bookings"`
 	Revision          int64     `json:"revision"`
+	// Display-only projection: the staff dashboard shows each slot's consult
+	// clock times and a live, server-anchored elapsed timer. None of these
+	// fields are persisted or exposed on parent/public surfaces.
+	ConsultMinutes int                     `json:"consultMinutes,omitempty"`
+	ServerTime     string                  `json:"serverTime,omitempty"`
+	Estimates      map[string]SlotEstimate `json:"estimates,omitempty"`
 }
 type Audit struct {
 	ID        int64  `json:"id"`

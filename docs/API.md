@@ -15,7 +15,8 @@ Go Server เป็นผู้ตัดสินกฎจริง Frontend ไ
 | POST | `/api/auth/login` | Staff credentials |
 | GET | `/api/auth/me` | Staff cookie; คืน user + CSRF token |
 | POST | `/api/auth/logout` | Staff cookie + CSRF |
-| GET | `/api/staff/bookings` | Staff; event records + global revision |
+| GET | `/api/staff/bookings` | Staff; event records + global revision + consult timing projection |
+| PUT | `/api/staff/settings/consult-minutes` | Admin cookie + CSRF; minutes per consult slot (1–60) |
 | PUT | `/api/staff/queue-order` | Staff cookie + CSRF + expectedRevision |
 | POST | `/api/staff/bookings/:id/actions` | Staff cookie + CSRF + booking expectedRevision |
 | POST | `/api/staff/bookings/:id/reschedule` | Admin cookie + CSRF + booking expectedRevision |
@@ -81,6 +82,22 @@ Revision เป็น event-store revision แบบ conservative: mutation ห�
 Combined Math + Completed จะเป็น Verbal/Waiting แทน global Completed; เริ่ม Calling Verbal ต้องจัด Verbal order ก่อน
 
 `reason` บังคับเมื่อ Cancelled Actor ได้จาก session identity ไม่รับ `staffName` จาก payload
+
+## Staff consult timing and slot estimates
+
+`GET /api/staff/bookings` adds three display-only fields on top of the existing snapshot. None of them are stored, and none appear on parent or public surfaces:
+
+| Field | Meaning |
+| --- | --- |
+| `consultMinutes` | Minutes per consult slot for this event (default 10, range 1–60) |
+| `serverTime` | Server clock when the snapshot was built (RFC3339Nano UTC); the dashboard anchors live elapsed timers to it so a skewed staff device still shows true durations |
+| `estimates` | `{ "<bookingId>": { "startAt": "<RFC3339Nano UTC>", "late": true? } }`; a missing id means no estimate for that row |
+
+`startAt` is the projected consult start of a saved queue position. Each room (level + date + Math/Verbal) is one chain: a slot starts when the previous slot starts plus `consultMinutes`. Real `calledAt`/`startedAt`/`endedAt` move the chain, so a slot that runs 20 minutes instead of 10 shifts every following slot and finishing early pulls the queue forward. A slot never starts before its own period start or before "now"; a session that is still running keeps sliding with the clock, including across the next period start of the same room. A projected start past its period end is flagged `late`. Rows without a saved position, Cancelled/No-show rows, rows whose period left the event configuration, and rows whose current room already ended are skipped and consume no slot; Booked rows that already hold a saved position do receive an estimate. `GET /api/track/:token` and `GET /api/display` are unchanged.
+
+`GET /api/event` adds the same `consultMinutes` value so the booking page can show the real consultation duration. The rest of the event payload is unchanged.
+
+`PUT /api/staff/settings/consult-minutes` (Admin cookie + CSRF, strict JSON) takes `{ "minutes": 1..60 }` and returns `{ "consultMinutes": n }`. It writes the existing `settings` row; there is no migration, no booking/audit/outbox change and no revision bump, so open queue drafts stay valid. Every Staff device sees the new duration on its next 5-second poll; the booking page reads it when the page loads. Invalid or out-of-range values return 400, non-Admin 403, unauthenticated 401.
 
 ## Reschedule
 

@@ -86,7 +86,7 @@ func TestStudentDetailsPreserveQueueAcrossLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	after, err := s.StaffList(testCtx)
-	if err != nil || !reflect.DeepEqual(v, after) {
+	if err != nil || !sameStaffState(v, after) {
 		t.Fatal("no-op changed snapshot", err)
 	}
 	for _, bad := range []StudentDetailsEdit{{"", "", current.School, current.Email, current.Revision}, {"", current.Nickname, "", current.Email, current.Revision}, {"", current.Nickname, current.School, "bad\r\n@example.com", current.Revision}, {strings.Repeat("W", 41), current.Nickname, current.School, current.Email, current.Revision}, {"", strings.Repeat("ก", 81), current.School, current.Email, current.Revision}} {

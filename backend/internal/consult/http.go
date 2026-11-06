@@ -99,7 +99,19 @@ func (h *HTTP) Handler() http.Handler {
 		}
 		respond(w, 200, map[string]string{"status": "ok"})
 	})
-	m.HandleFunc("GET /api/event", func(w http.ResponseWriter, r *http.Request) { respond(w, 200, h.Service.Config) })
+	m.HandleFunc("GET /api/event", func(w http.ResponseWriter, r *http.Request) {
+		minutes, err := h.Service.ConsultMinutes(r.Context())
+		if err != nil {
+			h.fail(w, r, err)
+			return
+		}
+		// Additive wrapper: Config itself stays unchanged so existing equality
+		// and decode behavior around the event payload is preserved.
+		respond(w, 200, struct {
+			Config
+			ConsultMinutes int `json:"consultMinutes"`
+		}{h.Service.Config, minutes})
+	})
 	m.HandleFunc("GET /api/periods", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		out, err := h.Service.Periods(r.Context(), q.Get("level"), q.Get("subject"), q.Get("date"))
@@ -212,6 +224,23 @@ func (h *HTTP) Handler() http.Handler {
 			return
 		}
 		respond(w, 200, out)
+	})
+	m.HandleFunc("PUT /api/staff/settings/consult-minutes", func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := h.staff(w, r, true, true); !ok {
+			return
+		}
+		var in struct {
+			Minutes int `json:"minutes"`
+		}
+		if err := decode(w, r, &in); err != nil {
+			h.fail(w, r, err)
+			return
+		}
+		if err := h.Service.SetConsultMinutes(r.Context(), in.Minutes); err != nil {
+			h.fail(w, r, err)
+			return
+		}
+		respond(w, 200, map[string]int{"consultMinutes": in.Minutes})
 	})
 	m.HandleFunc("GET /api/staff/export.xlsx", func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := h.staff(w, r, false, false); !ok {

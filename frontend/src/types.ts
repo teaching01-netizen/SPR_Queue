@@ -20,3 +20,5 @@ export type Audit = { id: string; bookingId: string; action: string; actor: stri
 export type Store = { version: 1; bookings: Booking[]; counters: Record<string, number>; audit: Audit[] };
 export type ParentView = { queuesUntilTurn: number | null; queueCountState: 'ready' | 'current' | 'inactive' | 'awaiting-check-in' | 'awaiting-order' | 'staff-review'; queueNo: string | null; currentQueues: { queueNo: string; state: 'Calling' | 'Serving' }[]; currentSubject: Stream; status: Status; counter: string };
 export type QueueScope = { level: Level; date: string; periodId: string; stream: Stream };
+// Staff-only projection from the server: when the queued slot should start.
+export type SlotEstimate = { startAt: string; late?: boolean };

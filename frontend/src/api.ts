@@ -1,10 +1,10 @@
-import type { Booking, BookingInput, ParentView, QueueScope, Status } from './types';
+import type { Booking, BookingInput, ParentView, QueueScope, SlotEstimate, Status } from './types';
 const BASE = import.meta.env.VITE_API_URL ?? '';
 let csrfToken = '';
 export type StaffUser = { username: string; role: string };
-export type StaffPacket = { canManageTestData: boolean; bookings: Booking[]; revision: number };
+export type StaffPacket = { canManageTestData: boolean; bookings: Booking[]; revision: number; consultMinutes?: number; serverTime?: string; estimates?: Record<string, SlotEstimate> };
 export type LiveQueue = { queueNo: string; state: 'Calling' | 'Serving' | 'Waiting'; counter?: string; periodStart?: string; periodEnd?: string };
-export type ServerEvent = { seminars?: {subject:'Math'|'Verbal';date:string;start:string;end:string}[]; event: { id: string; title: string; cycle: string; venue: string; sample: boolean; timezone: string }; rules: { level: 'Beginner' | 'High Level'; subject: 'Math' | 'Verbal' | 'Combined'; date: string; mode: string; periods: {id: string; start: string; end: string; capacity: number}[] }[] };
+export type ServerEvent = { consultMinutes?: number; seminars?: {subject:'Math'|'Verbal';date:string;start:string;end:string}[]; event: { id: string; title: string; cycle: string; venue: string; sample: boolean; timezone: string }; rules: { level: 'Beginner' | 'High Level'; subject: 'Math' | 'Verbal' | 'Combined'; date: string; mode: string; periods: {id: string; start: string; end: string; capacity: number}[] }[] };
 export class ApiError extends Error { constructor(public code: string, message: string, public status: number) { super(message); } }
 async function request<T>(path: string, method = 'GET', body?: unknown, headers: Record<string,string> = {}): Promise<T> {
   const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 15000);
@@ -44,6 +44,7 @@ export const api = {
   async book(input: BookingInput) { const {requestId,...payload} = input; const result = await request<{booking:Booking;token:string;trackingUrl:string}>('/api/bookings','POST',payload,{'Idempotency-Key':requestId}); updated(); return {...result.booking, token:result.token}; },
   track: (token:string) => request<ParentView>(`/api/track/${encodeURIComponent(token)}`),
   staffList: () => request<StaffPacket>('/api/staff/bookings'),
+  async setConsultMinutes(minutes:number) { const r=await request<{consultMinutes:number}>('/api/staff/settings/consult-minutes','PUT',{minutes});updated();return r.consultMinutes; },
   staffExport,
   async swapBookings(id:string,input:{otherBookingId:string;expectedRevision:number;otherExpectedRevision:number;reason:string;confirmation:string}) {const r=await request<{bookings:Booking[]}>(`/api/staff/bookings/${encodeURIComponent(id)}/swap`,'POST',input);updated();return r.bookings;},
   async recoverBooking(id:string,input:{action:'cancel'|'reset-checkin';reason:string;startSubject?:'Math'|'Verbal';releaseQueueCode?:boolean;expectedRevision:number;confirmation:string}) {const b=await request<Booking>(`/api/staff/bookings/${encodeURIComponent(id)}/recovery`,'POST',input);updated();return b;},

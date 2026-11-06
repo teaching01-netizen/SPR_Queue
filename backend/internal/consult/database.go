@@ -269,4 +269,21 @@ func (s *Service) snapshot(ctx context.Context) (StaffView, error) {
 	}
 	return view, tx.Commit()
 }
-func (s *Service) StaffList(ctx context.Context) (StaffView, error) { return s.snapshot(ctx) }
+
+// StaffList adds the display-only consult timing projection to the snapshot.
+// Track and Display keep the same snapshot payload without staff timing.
+func (s *Service) StaffList(ctx context.Context) (StaffView, error) {
+	view, err := s.snapshot(ctx)
+	if err != nil {
+		return view, err
+	}
+	minutes, err := s.ConsultMinutes(ctx)
+	if err != nil {
+		return view, err
+	}
+	now := time.Now()
+	view.ConsultMinutes = minutes
+	view.ServerTime = now.UTC().Format(time.RFC3339Nano)
+	view.Estimates = computeEstimates(view.Bookings, now, minutes, s.Config)
+	return view, nil
+}

@@ -5,7 +5,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -24,7 +23,7 @@ func TestStaffTrackingLinkPreservesOriginalAcrossStates(t *testing.T) {
 			t.Fatal("did not recover original link", err)
 		}
 		after, err := s.StaffList(testCtx)
-		if err != nil || !reflect.DeepEqual(before, after) {
+		if err != nil || !sameStaffState(before, after) {
 			t.Fatal("recovery changed booking/queue/revision", err)
 		}
 		if _, err = s.Track(testCtx, c.Token); err != nil {

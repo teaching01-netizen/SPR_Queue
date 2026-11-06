@@ -1,7 +1,7 @@
 import type { ServerEvent } from './api';
 import type { Level, Period, Subject, QueueScope } from './types';
 // Current event schedule is loaded from the Go API before rendering.
-export const EVENT = { id: 'performance-nov-2026', title: 'Student Performance Report', cycle: 'November 2026', venue: 'Warwick Institute · ชั้น 12A', sample: true };
+export const EVENT = { id: 'performance-nov-2026', title: 'Student Performance Report', cycle: 'November 2026', venue: 'Warwick Institute · ชั้น 12A', sample: true, consultMinutes: 10 };
 export const SUBJECTS: { id: Subject; label: string; description: string }[] = [
   { id: 'Math', label: 'SAT Math', description: 'วางแผนพัฒนาคะแนนคณิตศาสตร์' },
   { id: 'Verbal', label: 'SAT Verbal', description: 'วางแผนพัฒนาการอ่านและการเขียน' },
@@ -12,7 +12,9 @@ let liveRules: ServerEvent['rules'] | null = null;
 let liveSeminars: NonNullable<ServerEvent['seminars']> = [];
 export function seminarsFor(subject:Subject) { return liveSeminars.filter(s=>subject === 'Combined' || s.subject === subject).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)); }
 export function configureEvent(value: ServerEvent) {
-  Object.assign(EVENT, value.event); liveRules = value.rules; liveSeminars = value.seminars ?? [];
+  Object.assign(EVENT, value.event);
+  if (typeof value.consultMinutes === 'number' && value.consultMinutes > 0) EVENT.consultMinutes = value.consultMinutes;
+  liveRules = value.rules; liveSeminars = value.seminars ?? [];
   for (const r of value.rules) DATE_LABELS[r.date] = new Intl.DateTimeFormat('en-GB', {day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(r.date + 'T00:00:00Z'));
   const rule = value.rules[0]; Object.assign(DEFAULT_SCOPE, {level:rule.level,date:rule.date,periodId:rule.periods[0].id,stream:rule.subject === 'Verbal' ? 'Verbal' : 'Math'});
 }
