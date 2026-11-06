@@ -23,7 +23,13 @@ func (s *Service) RecoverBooking(ctx context.Context, id string, in BookingRecov
 		return Booking{}, problem("VALIDATION_ERROR", "เลือกยกเลิกคืนที่ว่าง หรือคืนเป็นรอเช็กอิน", 400)
 	}
 	in.Reason = strings.TrimSpace(in.Reason)
-	if in.Reason == "" || utf8.RuneCountInString(in.Reason) > 500 {
+	if utf8.RuneCountInString(in.Reason) > 500 {
+		return Booking{}, problem("VALIDATION_ERROR", "กรุณาระบุเหตุผลไม่เกิน 500 ตัวอักษร", 400)
+	}
+	// Resetting check-in always needs a reason. Cancelling a room that is
+	// mid-consultation is a fast emergency action: confirm once in the UI and
+	// let the server record a fixed audit reason.
+	if in.Action == "reset-checkin" && in.Reason == "" {
 		return Booking{}, problem("VALIDATION_ERROR", "กรุณาระบุเหตุผลไม่เกิน 500 ตัวอักษร", 400)
 	}
 	if in.Confirmation != "RECOVER BOOKING "+id {
@@ -47,6 +53,13 @@ func (s *Service) RecoverBooking(ctx context.Context, id string, in BookingRecov
 	if err = checkNotificationIdle(ctx, tx, b.ID); err != nil {
 		return b, err
 	}
+	if in.Action == "cancel" && in.Reason == "" {
+		if b.Status == "Serving" {
+			in.Reason = "ยุติการปรึกษาระหว่างให้บริการ"
+		} else {
+			return b, problem("VALIDATION_ERROR", "กรุณาระบุเหตุผลไม่เกิน 500 ตัวอักษร", 400)
+		}
+	}
 	previous, err := encode(b)
 	if err != nil {
 		return b, err
@@ -66,11 +79,11 @@ func (s *Service) RecoverBooking(ctx context.Context, id string, in BookingRecov
 		b.Counter = ""
 		b.Orders = map[string]int{}
 		// Cancel an unsent notification; an already delivered email is not resent.
-		result, e := tx.ExecContext(ctx, `UPDATE outbox SET state='Cancelled',next_at=0,lease_at=0,last_error='BOOKING_CANCELLED' WHERE booking_id=$1 AND state IN ('Pending','Failed')`, b.ID)
+		cancelled, e := cancelPendingNotification(ctx, tx, b.ID)
 		if e != nil {
 			return b, e
 		}
-		if n, _ := result.RowsAffected(); n > 0 {
+		if cancelled {
 			b.EmailStatus = "Cancelled"
 		}
 	} else {

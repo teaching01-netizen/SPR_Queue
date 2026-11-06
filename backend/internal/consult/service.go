@@ -188,17 +188,14 @@ func (s *Service) Assign(ctx context.Context, scope Scope, ids []string, revisio
 		}
 		seen[id] = true
 	}
-	// Older cancelled rows can still hold a code. Release them atomically before
-	// finding a free number; active and completed bookings are never renumbered.
-	if err = releaseCancelledQueueCodes(ctx, tx, s.Config.Event.ID, actor); err != nil {
-		return err
-	}
-
+	// Older cancelled rows can still hold a code. nextAvailableQueueCode
+	// releases only the specific code it is about to reuse, so unrelated
+	// cancelled history is not rewritten on every queue save.
 	for n, id := range ids {
 		b := eligible[id]
-		previous := state(b)
+		previous := assignmentState(b)
 		if b.QueueNo == nil {
-			code, e := nextAvailableQueueCode(ctx, tx, b)
+			code, e := nextAvailableQueueCode(ctx, tx, b, actor)
 			if e != nil {
 				return e
 			}
@@ -209,7 +206,7 @@ func (s *Service) Assign(ctx context.Context, scope Scope, ids []string, revisio
 		if err = updateBooking(ctx, tx, &b); err != nil {
 			return err
 		}
-		if err = addAudit(ctx, tx, b, "ASSIGN_QUEUE", previous, actor); err != nil {
+		if err = addAssignmentAudit(ctx, tx, b, "ASSIGN_QUEUE", previous, actor); err != nil {
 			return err
 		}
 	}
@@ -268,6 +265,16 @@ func (s *Service) Status(ctx context.Context, id, next string, revision int64, a
 	if next == "Cancelled" && (reason == "" || len(reason) > 2000) {
 		return b, problem("VALIDATION_ERROR", "กรุณาระบุเหตุผลที่ยกเลิก", 400)
 	}
+	// A cancellation must not race the outbox worker: the worker claims a row
+	// inside the same serialized write transaction, so after this check the
+	// booking can be cancelled without a confirmation mail being delivered
+	// afterwards.
+	if next == "Cancelled" {
+		if err = checkNotificationIdle(ctx, tx, b.ID); err != nil {
+			return b, err
+		}
+	}
+	wasNoShow := b.Status == "No-show"
 	previous := state(b)
 	if next == "Cancelled" {
 		previous = bookingManagementState(b)
@@ -307,14 +314,34 @@ func (s *Service) Status(ctx context.Context, id, next string, revision int64, a
 			b.CompletedAt = timestamp
 		}
 		if next == "Cancelled" {
+			cancelled, e := cancelPendingNotification(ctx, tx, b.ID)
+			if e != nil {
+				return b, e
+			}
+			if cancelled {
+				b.EmailStatus = "Cancelled"
+			}
 			b.CancelledAt = timestamp
 			b.CancellationReason = reason
 			b.QueueNo = nil
 			b.Orders = map[string]int{}
 			b.Counter = ""
 		}
+		if next == "No-show" {
+			// A no-show must not keep a saved queue position. Otherwise the
+			// next save renumbers the remaining parents while this row still
+			// advertises the old position to the parent tracking page.
+			b.Orders = map[string]int{}
+			b.Counter = ""
+		}
 		if next == "Waiting" {
 			b.Counter = ""
+			if wasNoShow {
+				// Rows created before no-show cleared its position may still
+				// hold the old order; force a fresh queue save so positions
+				// stay unique within the room.
+				b.Orders = map[string]int{}
+			}
 		}
 	}
 	b.Staff = actor

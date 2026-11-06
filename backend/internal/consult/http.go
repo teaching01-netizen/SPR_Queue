@@ -393,14 +393,12 @@ func (h *HTTP) Handler() http.Handler {
 		if !ok {
 			return
 		}
-		var in struct {
-			Revision int64 `json:"expectedRevision"`
-		}
+		var in BookingRestore
 		if err := decode(w, r, &in); err != nil {
 			h.fail(w, r, err)
 			return
 		}
-		out, err := h.Service.RestoreBooking(r.Context(), r.PathValue("id"), in.Revision, identity.User.Username)
+		out, err := h.Service.RestoreBooking(r.Context(), r.PathValue("id"), in, identity.User.Username)
 		if err != nil {
 			h.fail(w, r, err)
 			return

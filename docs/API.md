@@ -75,7 +75,8 @@ Revision เป็น event-store revision แบบ conservative: mutation ห�
 | Calling | Serving, Waiting, No-show, Cancelled |
 | Serving | Completed |
 | No-show | Waiting ผ่าน Staff recovery action |
-| Completed / Cancelled | ปิดรายการ ไม่มี restore endpoint รุ่นนี้ |
+| Cancelled | คืนการจองผ่าน `POST /api/staff/bookings/:id/restore` |
+| Completed | ปิดรายการ ไม่มี restore endpoint |
 
 Combined Math + Completed จะเป็น Verbal/Waiting แทน global Completed; เริ่ม Calling Verbal ต้องจัด Verbal order ก่อน
 
@@ -88,6 +89,22 @@ Combined Math + Completed จะเป็น Verbal/Waiting แทน global Com
 ```
 
 Admin เท่านั้น และรายการต้องเป็น Booked หากรอบใหม่เต็ม การจองเก่าจะไม่เปลี่ยน Booking ID/queue code คงเดิม แต่ลำดับรอถูกล้างเพื่อจัดในรอบใหม่ หากกำลังส่งอีเมลให้รอจน delivery attempt จบ
+
+## Restore cancelled booking
+
+```json
+{ "expectedRevision": 7, "date": "2026-11-07", "periodId": "P1400" }
+```
+
+`date` และ `periodId` เป็น optional: ไม่ส่งทั้งคู่ = คืนรอบเดิม; ส่งทั้งคู่ = ย้ายไปรอบใหม่ของระดับและวิชาเดิม (ห้ามเปลี่ยนวิชา/ระดับ) ระบบตรวจ config/capacity และล้างรหัสคิว/ลำดับเดิม แล้วตั้งสถานะ Waiting หากเคยเช็กอิน หรือ Booked หากยังไม่เช็กอิน เก็บประวัติ stage ที่จบแล้วและ token เดิม ใช้ได้กับรายการ Cancelled ที่ยังไม่ Completed; ผิดรูปแบบได้ 400, revision เก่า/รอบเต็ม/อีเมลกำลังส่งได้ 409
+
+## Admin recovery
+
+```json
+{ "action": "cancel", "reason": "…", "expectedRevision": 7, "confirmation": "RECOVER BOOKING <id>" }
+```
+
+`action` เป็น `cancel` หรือ `reset-checkin` เท่านั้น ฝั่ง cancel ของรายการ `Serving` ไม่ต้องส่ง `reason` (ระบบบันทึกเหตุผลกลาง “ยุติการปรึกษาระหว่างให้บริการ”) และไม่ต้องมี field ยืนยันเพิ่มเติม นอกเหนือจาก `confirmation` ของรายการ ส่วน cancel สถานะอื่นและ reset-checkin ยังต้องมี `reason` การยกเลิกจะยกเลิกอีเมลที่ยังไม่ส่งให้ด้วย และปฏิเสธด้วย 409 `NOTIFICATION_BUSY` หากกำลังส่งอีเมลอยู่
 
 ## Parent projection
 

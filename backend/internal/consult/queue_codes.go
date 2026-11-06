@@ -6,9 +6,11 @@ import (
 	"fmt"
 )
 
-// beginWrite serializes all booking mutations using the shared meta-row lock.
-// Read occupancy inside that transaction so simultaneous saves cannot reuse a code.
-func nextAvailableQueueCode(ctx context.Context, tx *sql.Tx, b Booking) (string, error) {
+// nextAvailableQueueCode returns the lowest unused code under the serialized
+// write lock. A code still attached to a cancelled row is released only when
+// that exact code is about to be reused; unrelated cancelled history is left
+// untouched so a normal queue save does not rewrite every old row.
+func nextAvailableQueueCode(ctx context.Context, tx *sql.Tx, b Booking, actor string) (string, error) {
 	level, subject := "B", "M"
 	if b.Level == "High Level" {
 		level = "H"
@@ -20,18 +22,18 @@ func nextAvailableQueueCode(ctx context.Context, tx *sql.Tx, b Booking) (string,
 		subject = "MV"
 	}
 	prefix := level + "-" + subject
-	rows, err := tx.QueryContext(ctx, `SELECT queue_no FROM bookings WHERE event_id=$1 AND queue_no IS NOT NULL`, b.EventID)
+	rows, err := tx.QueryContext(ctx, `SELECT queue_no,status FROM bookings WHERE event_id=$1 AND queue_no IS NOT NULL`, b.EventID)
 	if err != nil {
 		return "", err
 	}
-	used := map[string]bool{}
+	used := map[string]string{}
 	for rows.Next() {
-		var code string
-		if err = rows.Scan(&code); err != nil {
+		var code, status string
+		if err = rows.Scan(&code, &status); err != nil {
 			rows.Close()
 			return "", err
 		}
-		used[code] = true
+		used[code] = status
 	}
 	err = rows.Err()
 	rows.Close()
@@ -40,43 +42,36 @@ func nextAvailableQueueCode(ctx context.Context, tx *sql.Tx, b Booking) (string,
 	}
 	for n := 1; ; n++ {
 		code := fmt.Sprintf("%s-%03d", prefix, n)
-		if !used[code] {
+		status, taken := used[code]
+		if !taken {
+			return code, nil
+		}
+		if status == "Cancelled" {
+			if err = releaseCancelledQueueCode(ctx, tx, b.EventID, code, actor); err != nil {
+				return "", err
+			}
 			return code, nil
 		}
 	}
 }
 
-func releaseCancelledQueueCodes(ctx context.Context, tx *sql.Tx, event, actor string) error {
-	rows, err := tx.QueryContext(ctx, `SELECT data FROM bookings WHERE event_id=$1 AND status='Cancelled' AND queue_no IS NOT NULL`, event)
+// releaseCancelledQueueCode removes a code from one cancelled booking so the
+// caller can reuse it. Active and completed bookings are never renumbered.
+func releaseCancelledQueueCode(ctx context.Context, tx *sql.Tx, event, code, actor string) error {
+	b, err := scanBooking(tx.QueryRowContext(ctx, `SELECT data FROM bookings WHERE event_id=$1 AND queue_no=$2`, event, code))
 	if err != nil {
 		return err
 	}
-	bookings := []Booking{}
-	for rows.Next() {
-		b, e := scanBooking(rows)
-		if e != nil {
-			rows.Close()
-			return e
-		}
-		bookings = append(bookings, b)
+	if b.Status != "Cancelled" {
+		return problem("STALE_QUEUE", "รหัสคิวนี้ถูกใช้งานอยู่ กรุณารีเฟรชและจัดลำดับใหม่", 409)
 	}
-	err = rows.Err()
-	rows.Close()
-	if err != nil {
+	previous := bookingManagementState(b)
+	b.QueueNo = nil
+	b.Orders = map[string]int{}
+	b.Counter = ""
+	b.Staff = actor
+	if err = updateBooking(ctx, tx, &b); err != nil {
 		return err
 	}
-	for _, b := range bookings {
-		previous := bookingManagementState(b)
-		b.QueueNo = nil
-		b.Orders = map[string]int{}
-		b.Counter = ""
-		b.Staff = actor
-		if err = updateBooking(ctx, tx, &b); err != nil {
-			return err
-		}
-		if err = auditBookingChange(ctx, tx, b, "RELEASE_CANCELLED_QUEUE_CODE", previous, actor); err != nil {
-			return err
-		}
-	}
-	return nil
+	return auditBookingChange(ctx, tx, b, "RELEASE_CANCELLED_QUEUE_CODE", previous, actor)
 }

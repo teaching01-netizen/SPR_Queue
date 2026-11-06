@@ -221,6 +221,21 @@ func addAudit(ctx context.Context, tx *sql.Tx, b Booking, action, previous, acto
 	_, err := tx.ExecContext(ctx, `INSERT INTO audit(booking_id,action,actor,previous,next,at) VALUES($1,$2,$3,$4,$5,$6)`, b.ID, action, actor, previous, state(b), stamp())
 	return err
 }
+
+// assignmentState records the position values a queue save actually changes.
+// state() only captures subject/status, which made ASSIGN_QUEUE history useless
+// for explaining why a parent saw a different number.
+func assignmentState(b Booking) string {
+	text, _ := encode(map[string]any{
+		"status": b.Status, "currentSubject": b.CurrentSubject,
+		"queueNo": b.QueueNo, "orders": b.Orders, "counter": b.Counter,
+	})
+	return text
+}
+func addAssignmentAudit(ctx context.Context, tx *sql.Tx, b Booking, action, previous, actor string) error {
+	_, err := tx.ExecContext(ctx, `INSERT INTO audit(booking_id,action,actor,previous,next,at) VALUES($1,$2,$3,$4,$5,$6)`, b.ID, action, actor, previous, assignmentState(b), stamp())
+	return err
+}
 func bump(ctx context.Context, tx *sql.Tx) error {
 	_, err := tx.ExecContext(ctx, `UPDATE meta SET revision=revision+1 WHERE id=1`)
 	return err

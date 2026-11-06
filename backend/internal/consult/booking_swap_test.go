@@ -206,7 +206,7 @@ func TestSwapValidationRevisionBusyAndActiveGuards(t *testing.T) {
 	if _, e := s.SwapBookings(testCtx, aa.ID, swapInput(aa, bb), "SM1"); !codeIs(e, "SWAP_NOT_ALLOWED") {
 		t.Fatal(e)
 	}
-	bb, e := s.RestoreBooking(testCtx, bb.ID, bb.Revision, "SM1")
+	bb, e := s.RestoreBooking(testCtx, bb.ID, BookingRestore{Revision: bb.Revision}, "SM1")
 	if e != nil {
 		t.Fatal(e)
 	}

@@ -65,7 +65,7 @@ func TestArchiveCompletedPreservesHistoryCapacityAndToken(t *testing.T) {
 	if audit[0].Actor != "RD2" || audit[0].Action != "UNARCHIVE_COMPLETED" {
 		t.Fatal("archive actor missing")
 	}
-	if _, err = s.RestoreBooking(testCtx, done.ID, unarchived.Revision, "RD2"); !codeIs(err, "RESTORE_NOT_ALLOWED") {
+	if _, err = s.RestoreBooking(testCtx, done.ID, BookingRestore{Revision: unarchived.Revision}, "RD2"); !codeIs(err, "RESTORE_NOT_ALLOWED") {
 		t.Fatal("completed reopened", err)
 	}
 }

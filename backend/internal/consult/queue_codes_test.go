@@ -45,7 +45,7 @@ func TestQueueCodeReuseLowestGapsRestoreAndRelease(t *testing.T) {
 		}
 	}
 	cancelled := latest(t, s, bs[1].ID)
-	restored, e := s.RestoreBooking(testCtx, cancelled.ID, cancelled.Revision, "RD1")
+	restored, e := s.RestoreBooking(testCtx, cancelled.ID, BookingRestore{Revision: cancelled.Revision}, "RD1")
 	if e != nil || restored.QueueNo != nil {
 		t.Fatal("restore reclaimed occupied 002", e)
 	}

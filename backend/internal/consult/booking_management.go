@@ -14,6 +14,14 @@ type BookingEdit struct {
 	Revision         int64  `json:"expectedRevision"`
 }
 
+// BookingRestore optionally moves a cancelled booking to another date/period
+// when the original slot was retired or has been taken by someone else.
+type BookingRestore struct {
+	Revision int64  `json:"expectedRevision"`
+	Date     string `json:"date,omitempty"`
+	PeriodID string `json:"periodId,omitempty"`
+}
+
 func bookingManagementState(b Booking) string {
 	text, _ := encode(map[string]any{
 		"level": b.Level, "subject": b.Subject, "date": b.Date, "periodId": b.PeriodID,
@@ -37,6 +45,21 @@ func checkNotificationIdle(ctx context.Context, tx *sql.Tx, id string) error {
 		return problem("NOTIFICATION_BUSY", "ระบบกำลังส่งอีเมล กรุณาลองใหม่ภายหลัง", 409)
 	}
 	return nil
+}
+
+// cancelPendingNotification marks an unsent notification as cancelled in the
+// same transaction as the booking change. A confirmation email that was never
+// delivered must not be sent after the parent was cancelled by staff.
+func cancelPendingNotification(ctx context.Context, tx *sql.Tx, id string) (bool, error) {
+	result, err := tx.ExecContext(ctx, `UPDATE outbox SET state='Cancelled',next_at=0,lease_at=0,last_error='BOOKING_CANCELLED' WHERE booking_id=$1 AND state IN ('Pending','Failed')`, id)
+	if err != nil {
+		return false, err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
 }
 func (s *Service) queueUpdatedConfirmation(ctx context.Context, tx *sql.Tx, b *Booking) error {
 	if !s.MailEnabled || b.Status == "Cancelled" {
@@ -155,9 +178,10 @@ func (s *Service) EditBooking(ctx context.Context, id string, in BookingEdit, ac
 }
 
 // RestoreBooking reserves capacity again; it never revives an active room call
-// or reopens completed stages. A cancelled booking can be edited first if its
-// original period was retired or is now full.
-func (s *Service) RestoreBooking(ctx context.Context, id string, revision int64, actor string) (Booking, error) {
+// or reopens completed stages. When the original period was retired or has been
+// filled by someone else, the caller can pass a target date/period for the same
+// level and subject; stage history and tracking identity stay untouched.
+func (s *Service) RestoreBooking(ctx context.Context, id string, in BookingRestore, actor string) (Booking, error) {
 	tx, err := s.beginWrite(ctx)
 	if err != nil {
 		return Booking{}, err
@@ -170,7 +194,7 @@ func (s *Service) RestoreBooking(ctx context.Context, id string, revision int64,
 	if b.EventID != s.Config.Event.ID {
 		return Booking{}, errNotFound
 	}
-	if b.Revision != revision {
+	if b.Revision != in.Revision {
 		return b, problem("REVISION_CONFLICT", "รายการนี้เปลี่ยนแล้ว กรุณาปิดหน้าต่างแล้วเปิดรายการล่าสุด", 409)
 	}
 	if b.Status != "Cancelled" {
@@ -179,17 +203,29 @@ func (s *Service) RestoreBooking(ctx context.Context, id string, revision int64,
 	if b.CompletedAt != "" || (b.Subject == "Combined" && b.Stages["Math"].EndedAt != "" && b.Stages["Verbal"].EndedAt != "") {
 		return b, problem("RESTORE_NOT_ALLOWED", "รายการนี้ปรึกษาเสร็จแล้ว", 409)
 	}
-	_, _, period, err := s.Config.Normalize(b.Input)
+	input := b.Input
+	if in.Date != "" || in.PeriodID != "" {
+		if in.Date == "" || in.PeriodID == "" {
+			return b, problem("VALIDATION_ERROR", "เลือกทั้งวันและรอบใหม่ หรือเว้นว่างเพื่อใช้รอบเดิม", 400)
+		}
+		input.Date = in.Date
+		input.PeriodID = in.PeriodID
+	}
+	normalized, rule, period, err := s.Config.Normalize(input)
 	if err != nil {
 		return b, err
 	}
+	target := b
+	target.Input = normalized
 	if err = checkNotificationIdle(ctx, tx, b.ID); err != nil {
 		return b, err
 	}
-	if err = availableForBooking(ctx, tx, b, period.Capacity); err != nil {
+	if err = availableForBooking(ctx, tx, target, period.Capacity); err != nil {
 		return b, err
 	}
 	previous := bookingManagementState(b)
+	b.Input = normalized
+	b.Mode = rule.Mode
 	b.QueueNo = nil // A cancelled code may already belong to a different parent.
 	b.Status = "Booked"
 	if b.CheckedInAt != nil {

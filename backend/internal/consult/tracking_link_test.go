@@ -41,7 +41,7 @@ func TestStaffTrackingLinkPreservesOriginalAcrossStates(t *testing.T) {
 		t.Fatal(err)
 	}
 	check()
-	if _, err := s.RestoreBooking(testCtx, b.ID, b.Revision, "RD1"); err != nil {
+	if _, err := s.RestoreBooking(testCtx, b.ID, BookingRestore{Revision: b.Revision}, "RD1"); err != nil {
 		t.Fatal(err)
 	}
 	check()

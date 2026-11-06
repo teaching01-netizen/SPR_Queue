@@ -178,7 +178,9 @@ func (s *Service) ProcessMail(ctx context.Context, mailer Mailer) (bool, error) 
 		if err != nil {
 			return false, err
 		}
-		b.EmailStatus = "Failed"
+		// The booking was cancelled before this worker could send: report the
+		// suppressed delivery honestly instead of claiming the email failed.
+		b.EmailStatus = "Cancelled"
 		if err = updateBooking(ctx, tx, &b); err != nil {
 			return false, err
 		}

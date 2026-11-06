@@ -57,7 +57,11 @@ func TestSevenLocalStaffAndSessionPreservation(t *testing.T) {
 	}
 	for _, name := range localStaffNames {
 		id, err := a.Login(testCtx, name, name)
-		if err != nil || id.User.Username != name || id.User.Role != "operator" {
+		expectedRole := "operator"
+		if name == "RD1" {
+			expectedRole = "admin"
+		}
+		if err != nil || id.User.Username != name || id.User.Role != expectedRole {
 			t.Fatal(name, err)
 		}
 		var hash string

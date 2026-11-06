@@ -206,7 +206,7 @@ func TestCancelRestoreCapacityAndArchivedEdit(t *testing.T) {
 	for n := 0; n < 4; n++ {
 		book(t, s, testInput())
 	}
-	if _, err := s.RestoreBooking(testCtx, b.ID, b.Revision, "staff"); !codeIs(err, "PERIOD_FULL") {
+	if _, err := s.RestoreBooking(testCtx, b.ID, BookingRestore{Revision: b.Revision}, "staff"); !codeIs(err, "PERIOD_FULL") {
 		t.Fatal("restore into full", err)
 	}
 	if latest(t, s, b.ID).Status != "Cancelled" {
@@ -219,11 +219,11 @@ func TestCancelRestoreCapacityAndArchivedEdit(t *testing.T) {
 	if err != nil || b.Status != "Cancelled" {
 		t.Fatal("archived edit", b, err)
 	}
-	restored, err := s.RestoreBooking(testCtx, b.ID, b.Revision, "staff")
+	restored, err := s.RestoreBooking(testCtx, b.ID, BookingRestore{Revision: b.Revision}, "staff")
 	if err != nil || restored.Status != "Booked" || restored.ID != c.Booking.ID || restored.CancelledAt != "" || restored.CancellationReason != "" || len(restored.Orders) != 0 {
 		t.Fatal(restored, err)
 	}
-	if _, err = s.RestoreBooking(testCtx, b.ID, b.Revision, "staff"); !codeIs(err, "REVISION_CONFLICT") {
+	if _, err = s.RestoreBooking(testCtx, b.ID, BookingRestore{Revision: b.Revision}, "staff"); !codeIs(err, "REVISION_CONFLICT") {
 		t.Fatal("duplicate restore", err)
 	}
 	// Archived records may point at a full target but do not reserve it until restore.
@@ -235,7 +235,7 @@ func TestCancelRestoreCapacityAndArchivedEdit(t *testing.T) {
 	if err != nil {
 		t.Fatal("edit full target while cancelled", err)
 	}
-	if _, err = s.RestoreBooking(testCtx, another.ID, another.Revision, "staff"); !codeIs(err, "PERIOD_FULL") {
+	if _, err = s.RestoreBooking(testCtx, another.ID, BookingRestore{Revision: another.Revision}, "staff"); !codeIs(err, "PERIOD_FULL") {
 		t.Fatal(err)
 	}
 	audit, _ := s.Audit(testCtx)
@@ -258,7 +258,7 @@ func TestRestoreCheckedInNoShowAndPartialCombined(t *testing.T) {
 	check := *b.CheckedInAt
 	b = transition(t, s, b.ID, "No-show")
 	b = cancelBooking(t, s, b)
-	b, err := s.RestoreBooking(testCtx, b.ID, b.Revision, "staff")
+	b, err := s.RestoreBooking(testCtx, b.ID, BookingRestore{Revision: b.Revision}, "staff")
 	if err != nil || b.Status != "Waiting" || b.QueueNo != nil || *b.CheckedInAt != check || len(b.Orders) != 0 {
 		t.Fatal("no-show restore", b, err)
 	}
@@ -280,7 +280,7 @@ func TestRestoreCheckedInNoShowAndPartialCombined(t *testing.T) {
 	if _, err = s.EditBooking(testCtx, b.ID, in, "staff"); !codeIs(err, "BOOKING_EDIT_LOCKED") {
 		t.Fatal("partial consult history reassigned", err)
 	}
-	b, err = s.RestoreBooking(testCtx, b.ID, b.Revision, "staff")
+	b, err = s.RestoreBooking(testCtx, b.ID, BookingRestore{Revision: b.Revision}, "staff")
 	if err != nil || b.Status != "Waiting" || b.CurrentSubject != "Verbal" || b.Stages["Math"].EndedAt != ended || b.QueueNo != nil {
 		t.Fatal("partial restore", b, err)
 	}
@@ -310,7 +310,7 @@ func TestConcurrentRestoreLastSlot(t *testing.T) {
 		wg.Add(1)
 		go func(b Booking) {
 			defer wg.Done()
-			_, err := s.RestoreBooking(testCtx, b.ID, b.Revision, "staff")
+			_, err := s.RestoreBooking(testCtx, b.ID, BookingRestore{Revision: b.Revision}, "staff")
 			results <- err
 		}(b)
 	}
@@ -346,7 +346,7 @@ func TestEditCompetesWithRestoreForLastSlot(t *testing.T) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		_, err := s.RestoreBooking(testCtx, archived.ID, archived.Revision, "staff")
+		_, err := s.RestoreBooking(testCtx, archived.ID, BookingRestore{Revision: archived.Revision}, "staff")
 		results <- err
 	}()
 	go func() { defer wg.Done(); _, err := s.EditBooking(testCtx, source.ID, in, "staff"); results <- err }()
@@ -374,7 +374,7 @@ func TestEditCompetesWithRestoreForLastSlot(t *testing.T) {
 	if _, err := s.EditBooking(testCtx, source.ID, in, "staff"); !codeIs(err, "BOOKING_NOT_FOUND") {
 		t.Fatal("cross event edit", err)
 	}
-	if _, err := s.RestoreBooking(testCtx, archived.ID, archived.Revision, "staff"); !codeIs(err, "BOOKING_NOT_FOUND") {
+	if _, err := s.RestoreBooking(testCtx, archived.ID, BookingRestore{Revision: archived.Revision}, "staff"); !codeIs(err, "BOOKING_NOT_FOUND") {
 		t.Fatal("cross event restore", err)
 	}
 }
@@ -402,7 +402,7 @@ func TestRestoreQueuesLatestConfirmation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err = s.RestoreBooking(testCtx, b.ID, b.Revision, "staff")
+	b, err = s.RestoreBooking(testCtx, b.ID, BookingRestore{Revision: b.Revision}, "staff")
 	if err != nil || b.EmailStatus != "Pending" {
 		t.Fatal(b, err)
 	}
