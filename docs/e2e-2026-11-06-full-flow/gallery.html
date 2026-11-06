@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="th">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warwick Private Consult — consult-day walkthrough</title>
+<style>
+  :root { --ink:#20334a; --muted:#7b8795; --burgundy:#861f35; --line:#e7ebef; --paper:#f6f7f9; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'IBM Plex Sans Thai','Manrope',Tahoma,sans-serif; color:var(--ink); background:var(--paper); }
+  header { background:#14263c; color:#f1e5cb; padding:40px; }
+  header h1 { margin:0 0 10px; font-size:26px; }
+  header p { color:#aebfce; max-width:900px; line-height:1.8; margin:0; white-space:pre-line; }
+  main { max-width:1280px; margin:0 auto; padding:30px 24px 80px; }
+  section { margin:44px 0; }
+  section h2 { font-size:20px; border-bottom:2px solid var(--line); padding-bottom:10px; }
+  .intro { color:var(--muted); line-height:1.9; margin:12px 0 22px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:22px; }
+  figure { margin:0; background:#fff; border:1px solid var(--line); border-radius:12px; overflow:hidden; box-shadow:0 3px 10px #1a2f4a10; }
+  figure img { display:block; width:100%; height:auto; border-bottom:1px solid var(--line); }
+  figcaption { padding:14px 16px 18px; }
+  figcaption strong { display:block; margin-bottom:6px; }
+  figcaption p { margin:0; color:var(--muted); font-size:13px; line-height:1.8; }
+</style>
+<header>
+  <h1>Warwick Private Consult — full consult-day walkthrough</h1>
+  <p>Playwright capture of the complete parent → staff → admin flow, including every status and edge case.
+Demo schedule on an isolated local server; no production data touched.</p>
+</header>
+<main><section>
+  <h2>1 · ผู้ปกครองจองรอบ Consult</h2>
+  <p class="intro">เปิดหน้าจอง กรอกข้อมูล เลือกรอบ รับลิงก์ติดตามคิว และเห็นกรณีรอบถูกแย่งที่</p>
+  <div class="grid"><figure id="c01-01-booking-page">
+  <a href="c01-01-booking-page.png" target="_blank"><img loading="lazy" src="c01-01-booking-page.png" alt="หน้าจอง Private Consult"></a>
+  <figcaption><strong>หน้าจอง Private Consult</strong><p>หน้าจองสาธารณะแสดงรอบว่าง จำนวน slots และเวลาต่อคิวที่ดึงจาก Backend · รอบ 13:00 ที่เต็มแล้วแสดงสถานะ &quot;เต็มแล้ว&quot;</p></figcaption>
+</figure>
+<figure id="c01-02-booking-period-taken">
+  <a href="c01-02-booking-period-taken.png" target="_blank"><img loading="lazy" src="c01-02-booking-period-taken.png" alt="รอบถูกแย่งที่ก่อนกดยืนยัน"></a>
+  <figcaption><strong>รอบถูกแย่งที่ก่อนกดยืนยัน</strong><p>เซิร์ฟเวอร์ตอบ PERIOD_FULL หน้าจองแจ้ง &quot;ช่วงเวลานี้เต็มแล้ว กรุณาเลือกช่วงอื่น&quot; และไม่ตัดยอดจองเดิม</p></figcaption>
+</figure>
+<figure id="c01-03-booking-filled">
+  <a href="c01-03-booking-filled.png" target="_blank"><img loading="lazy" src="c01-03-booking-filled.png" alt="กรอกข้อมูลครบและเลือกรอบ 14:00–15:30"></a>
+  <figcaption><strong>กรอกข้อมูลครบและเลือกรอบ 14:00–15:30</strong><p>สรุปรอบที่เลือก จำนวน slots และรูปแบบ On-site แสดงในการ์ดด้านข้างก่อนกดยืนยัน</p></figcaption>
+</figure>
+<figure id="c01-04-booking-success">
+  <a href="c01-04-booking-success.png" target="_blank"><img loading="lazy" src="c01-04-booking-success.png" alt="จองสำเร็จ พร้อมลิงก์ติดตามคิว"></a>
+  <figcaption><strong>จองสำเร็จ พร้อมลิงก์ติดตามคิว</strong><p>หน้ายืนยันการจองแสดงวิชา รอบ และสถานะอีเมล พร้อมลิงก์ติดตามคิวส่วนตัวที่ผู้ปกครองต้องเก็บไว้</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>2 · ผู้ปกครองเปิดลิงก์ติดตามคิวก่อนถึงวัน</h2>
+  <p class="intro">สถานะก่อนเช็กอินยังไม่มีการคำนวณคิว</p>
+  <div class="grid"><figure id="c02-01-tracking-before-checkin">
+  <a href="c02-01-tracking-before-checkin.png" target="_blank"><img loading="lazy" src="c02-01-tracking-before-checkin.png" alt="ลิงก์ติดตามคิวก่อนเช็กอิน"></a>
+  <figcaption><strong>ลิงก์ติดตามคิวก่อนเช็กอิน</strong><p>ผู้ปกครองเห็นสถานะรอเช็กอิน และข้อความ &quot;เช็กอินกับ Staff ก่อน ระบบจึงจะคำนวณคิวให้&quot;</p></figcaption>
+</figure>
+<figure id="c02-02-tracking-mobile">
+  <a href="c02-02-tracking-mobile.png" target="_blank"><img loading="lazy" src="c02-02-tracking-mobile.png" alt="ลิงก์ติดตามคิวบนมือถือ"></a>
+  <figcaption><strong>ลิงก์ติดตามคิวบนมือถือ</strong><p>หน้าติดตามคิวคือหน้าแรกที่ผู้ปกครองเปิดตอนมาถึงหน้างาน</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>3 · Staff เปิดวันและเข้าสู่ระบบ</h2>
+  <p class="intro">Login หน้า Staff Dashboard และรายการรอเช็กอินของทั้งวัน</p>
+  <div class="grid"><figure id="c03-01-login">
+  <a href="c03-01-login.png" target="_blank"><img loading="lazy" src="c03-01-login.png" alt="หน้า Staff Login"></a>
+  <figcaption><strong>หน้า Staff Login</strong><p>เฉพาะทีมงาน Warwick หน้านี้ไม่เกี่ยวกับลิงก์ผู้ปกครอง</p></figcaption>
+</figure>
+<figure id="c03-02-login-error">
+  <a href="c03-02-login-error.png" target="_blank"><img loading="lazy" src="c03-02-login-error.png" alt="รหัสผ่านไม่ถูกต้อง"></a>
+  <figcaption><strong>รหัสผ่านไม่ถูกต้อง</strong><p>ระบบตอบ 401 และไม่เปิดเผยว่ามีบัญชีนี้อยู่หรือไม่</p></figcaption>
+</figure>
+<figure id="c03-03-dashboard-checkin">
+  <a href="c03-03-dashboard-checkin.png" target="_blank"><img loading="lazy" src="c03-03-dashboard-checkin.png" alt="Staff Dashboard · เช็กอินรวมทุกช่วงเวลา"></a>
+  <figcaption><strong>Staff Dashboard · เช็กอินรวมทุกช่วงเวลา</strong><p>รายการจองทั้งหมดของวันนี้พร้อมปุ่มเช็กอิน ยังไม่มีคิวถูกจัด</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>4 · ผู้ปกครองมาถึงและเช็กอิน</h2>
+  <p class="intro">Staff เช็กอินให้ผู้ปกครอง แล้วสถานะเปลี่ยนเป็นรอเรียกคิว</p>
+  <div class="grid"><figure id="c04-01-checkin-before">
+  <a href="c04-01-checkin-before.png" target="_blank"><img loading="lazy" src="c04-01-checkin-before.png" alt="แถวของน้องมีนก่อนเช็กอิน"></a>
+  <figcaption><strong>แถวของน้องมีนก่อนเช็กอิน</strong><p>สถานะ &quot;รอเช็กอิน&quot; ยังไม่มีคิวหรือเวลาคิว</p></figcaption>
+</figure>
+<figure id="c04-02-checkin-after">
+  <a href="c04-02-checkin-after.png" target="_blank"><img loading="lazy" src="c04-02-checkin-after.png" alt="เช็กอินสำเร็จ"></a>
+  <figcaption><strong>เช็กอินสำเร็จ</strong><p>สถานะเปลี่ยนเป็น &quot;รอเรียกคิว&quot; และขึ้นเครื่องหมายเช็กอินแล้ว</p></figcaption>
+</figure>
+<figure id="c04-03-tracking-after-checkin">
+  <a href="c04-03-tracking-after-checkin.png" target="_blank"><img loading="lazy" src="c04-03-tracking-after-checkin.png" alt="ผู้ปกครองเห็นสถานะหลังเช็กอิน"></a>
+  <figcaption><strong>ผู้ปกครองเห็นสถานะหลังเช็กอิน</strong><p>ลิงก์เดิมอัปเดตเองทุก 5 วินาที · ตอนนี้ยังไม่มีลำดับคิวจนกว่า Staff จะบันทึกคิว</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>5 · จัดลำดับคิวและประกาศเวลาคิว</h2>
+  <p class="intro">Staff เรียงลำดับ บันทึกคิว แล้วผู้ปกครอง/จอแสดงคิวเห็นรหัสและเวลาคิว</p>
+  <div class="grid"><figure id="c05-01-queue-before-save">
+  <a href="c05-01-queue-before-save.png" target="_blank"><img loading="lazy" src="c05-01-queue-before-save.png" alt="จัดลำดับก่อนบันทึก"></a>
+  <figcaption><strong>จัดลำดับก่อนบันทึก</strong><p>ยังไม่มีรหัสคิว ลำดับถูกเลื่อนไว้ชั่วคราว และคอลัมน์เวลาคิวเป็น &quot;—&quot;</p></figcaption>
+</figure>
+<figure id="c05-02-queue-after-save">
+  <a href="c05-02-queue-after-save.png" target="_blank"><img loading="lazy" src="c05-02-queue-after-save.png" alt="บันทึกคิวแล้ว · รหัสและเวลาคิวประมาณ"></a>
+  <figcaption><strong>บันทึกคิวแล้ว · รหัสและเวลาคิวประมาณ</strong><p>ทุกแถวได้รหัสคิว ลำดับ 1–3 และเวลาคิวโดยประมาณห่างกันตามเวลาต่อคิว</p></figcaption>
+</figure>
+<figure id="c05-03-tracking-queue-position">
+  <a href="c05-03-tracking-queue-position.png" target="_blank"><img loading="lazy" src="c05-03-tracking-queue-position.png" alt="ผู้ปกครองเห็นจำนวนคิวที่เหลือ"></a>
+  <figcaption><strong>ผู้ปกครองเห็นจำนวนคิวที่เหลือ</strong><p>น้องมีนเป็นคิวแรก ระบบบอกว่าเป็นคิวถัดไปและให้เตรียมตัว</p></figcaption>
+</figure>
+<figure id="c05-04-display-upcoming">
+  <a href="c05-04-display-upcoming.png" target="_blank"><img loading="lazy" src="c05-04-display-upcoming.png" alt="จอแสดงคิว · คิวถัดไป"></a>
+  <figcaption><strong>จอแสดงคิว · คิวถัดไป</strong><p>จอประชาสัมพันธ์แสดงรหัสคิวที่รอในห้อง Math ตามลำดับที่ Staff บันทึก</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>6 · เรียกคิว</h2>
+  <p class="intro">Staff เรียกคิวถัดไป ผู้ปกครองเห็นสถานะถูกเรียก และจอแสดงคิวเปลี่ยนเป็น Now Calling</p>
+  <div class="grid"><figure id="c06-01-called-row">
+  <a href="c06-01-called-row.png" target="_blank"><img loading="lazy" src="c06-01-called-row.png" alt="แถวที่ถูกเรียก"></a>
+  <figcaption><strong>แถวที่ถูกเรียก</strong><p>สถานะ &quot;กำลังเรียก&quot; เวลาเรียกถูกบันทึก และมีปุ่มเริ่มปรึกษา/พักคิว/ไม่มา</p></figcaption>
+</figure>
+<figure id="c06-02-live-banner">
+  <a href="c06-02-live-banner.png" target="_blank"><img loading="lazy" src="c06-02-live-banner.png" alt="แบนเนอร์ห้องที่กำลังให้บริการ"></a>
+  <figcaption><strong>แบนเนอร์ห้องที่กำลังให้บริการ</strong><p>ห้อง Math แสดงคิวที่กำลังเรียก ไม่ให้เรียกซ้อนอีกคิวในห้องเดียวกัน</p></figcaption>
+</figure>
+<figure id="c06-03-tracking-called">
+  <a href="c06-03-tracking-called.png" target="_blank"><img loading="lazy" src="c06-03-tracking-called.png" alt="ผู้ปกครองถูกเรียก"></a>
+  <figcaption><strong>ผู้ปกครองถูกเรียก</strong><p>หน้าติดตามคิวขึ้น &quot;ถึงคิวของคุณแล้ว&quot; พร้อมบอกให้ไปที่ห้อง</p></figcaption>
+</figure>
+<figure id="c06-04-display-calling">
+  <a href="c06-04-display-calling.png" target="_blank"><img loading="lazy" src="c06-04-display-calling.png" alt="จอแสดงคิวยามเรียก"></a>
+  <figcaption><strong>จอแสดงคิวยามเรียก</strong><p>NOW CALLING แสดงรหัสที่กำลังเรียก และ &quot;คิวถัดไป&quot; ยังคงเตรียมพร้อม</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>7 · เริ่มปรึกษา · จับเวลา · ใช้เวลาเกิน</h2>
+  <p class="intro">เวลาเริ่มถูกบันทึกและเดินจริง ทุกคนเห็นเวลาเดียวกัน</p>
+  <div class="grid"><figure id="c07-01-serving-timer">
+  <a href="c07-01-serving-timer.png" target="_blank"><img loading="lazy" src="c07-01-serving-timer.png" alt="เริ่มปรึกษาแล้ว · ตัวจับเวลาเดินจริง"></a>
+  <figcaption><strong>เริ่มปรึกษาแล้ว · ตัวจับเวลาเดินจริง</strong><p>แถวแสดง &quot;เริ่ม HH:mm · ใช้ไป mm:ss · คาดจบ HH:mm&quot; โดยอิงนาฬิกาเซิร์ฟเวอร์</p></figcaption>
+</figure>
+<figure id="c07-02-serving-overrun">
+  <a href="c07-02-serving-overrun.png" target="_blank"><img loading="lazy" src="c07-02-serving-overrun.png" alt="คิวใช้เวลาเกินกำหนด"></a>
+  <figcaption><strong>คิวใช้เวลาเกินกำหนด</strong><p>เมื่อเกินเวลาต่อคิว ตัวเลขเปลี่ยนเป็น &quot;เกิน mm:ss&quot; และคิวถัดไปถูกเลื่อนตามเวลาจริง</p></figcaption>
+</figure>
+<figure id="c07-03-tracking-serving">
+  <a href="c07-03-tracking-serving.png" target="_blank"><img loading="lazy" src="c07-03-tracking-serving.png" alt="ผู้ปกครองเห็นว่ากำลังปรึกษา"></a>
+  <figcaption><strong>ผู้ปกครองเห็นว่ากำลังปรึกษา</strong><p>หน้าติดตามคิวบอกว่ากำลังรับการปรึกษาอยู่</p></figcaption>
+</figure>
+<figure id="c07-04-display-serving">
+  <a href="c07-04-display-serving.png" target="_blank"><img loading="lazy" src="c07-04-display-serving.png" alt="จอแสดงคิวยามปรึกษา"></a>
+  <figcaption><strong>จอแสดงคิวยามปรึกษา</strong><p>NOW CALLING / SERVING แสดงรหัสที่กำลังรับบริการ</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>8 · Admin ปรับเวลาต่อคิว</h2>
+  <p class="intro">เวลาต่อคิวใช้คำนวณทุกห้อง มีผลทันทีโดยไม่ต้อง deploy</p>
+  <div class="grid"><figure id="c08-01-settings-modal">
+  <a href="c08-01-settings-modal.png" target="_blank"><img loading="lazy" src="c08-01-settings-modal.png" alt="หน้าตั้งเวลาต่อคิว (Admin เท่านั้น)"></a>
+  <figcaption><strong>หน้าตั้งเวลาต่อคิว (Admin เท่านั้น)</strong><p>ค่าเริ่มต้น 10 นาที ใช้กับทุกห้องและทุกช่วงเวลาของกิจกรรมนี้</p></figcaption>
+</figure>
+<figure id="c08-02-settings-saved">
+  <a href="c08-02-settings-saved.png" target="_blank"><img loading="lazy" src="c08-02-settings-saved.png" alt="บันทึกค่าใหม่แล้ว"></a>
+  <figcaption><strong>บันทึกค่าใหม่แล้ว</strong><p>ปุ่มบนหัวจอแสดง 20 นาที ทุกเครื่องของ Staff เห็นค่าเดียวกันภายใน 5 วินาที</p></figcaption>
+</figure>
+<figure id="c08-03-queue-late-spacing">
+  <a href="c08-03-queue-late-spacing.png" target="_blank"><img loading="lazy" src="c08-03-queue-late-spacing.png" alt="คิวห้อง Verbal ใช้ช่วง 20 นาที"></a>
+  <figcaption><strong>คิวห้อง Verbal ใช้ช่วง 20 นาที</strong><p>คิวที่เลยเวลาจบรอบจะขึ้น &quot;เกินรอบ&quot; เพื่อให้ Staff เห็นว่าต้องบริหารเวลา</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>9 · จบการปรึกษา · เก็บประวัติ</h2>
+  <p class="intro">Staff กดจบ ระบบบันทึกช่วงเวลาและระยะเวลาจริงของผู้ปกครองรายนั้น</p>
+  <div class="grid"><figure id="c09-01-completed-row">
+  <a href="c09-01-completed-row.png" target="_blank"><img loading="lazy" src="c09-01-completed-row.png" alt="แถวที่จบการปรึกษาแล้ว"></a>
+  <figcaption><strong>แถวที่จบการปรึกษาแล้ว</strong><p>แสดงช่วงเวลาเริ่ม–จบ และจำนวนนาทีที่ใช้จริง</p></figcaption>
+</figure>
+<figure id="c09-02-detail-modal">
+  <a href="c09-02-detail-modal.png" target="_blank"><img loading="lazy" src="c09-02-detail-modal.png" alt="รายละเอียดการจอง · เวลาของแต่ละห้อง"></a>
+  <figcaption><strong>รายละเอียดการจอง · เวลาของแต่ละห้อง</strong><p>โมดัลแสดงเวลาปัจจุบัน เวลาของแต่ละห้อง และเวลาต่อคิวที่ใช้อยู่ในกิจกรรมนี้</p></figcaption>
+</figure>
+<figure id="c09-03-tracking-completed">
+  <a href="c09-03-tracking-completed.png" target="_blank"><img loading="lazy" src="c09-03-tracking-completed.png" alt="ผู้ปกครองเห็นว่าปรึกษาเสร็จสิ้น"></a>
+  <figcaption><strong>ผู้ปกครองเห็นว่าปรึกษาเสร็จสิ้น</strong><p>สถานะเสร็จสิ้นพร้อมข้อความขอบคุณ และไม่มีการคำนวณคิวต่อ</p></figcaption>
+</figure>
+<figure id="c09-04-completed-tab">
+  <a href="c09-04-completed-tab.png" target="_blank"><img loading="lazy" src="c09-04-completed-tab.png" alt="แท็บรายการจบแล้ว"></a>
+  <figcaption><strong>แท็บรายการจบแล้ว</strong><p>รายการเสร็จสิ้นพร้อมเวลาและปุ่มเก็บประวัติ</p></figcaption>
+</figure>
+<figure id="c09-05-archived-filter">
+  <a href="c09-05-archived-filter.png" target="_blank"><img loading="lazy" src="c09-05-archived-filter.png" alt="กรองดูเฉพาะที่เก็บประวัติแล้ว"></a>
+  <figcaption><strong>กรองดูเฉพาะที่เก็บประวัติแล้ว</strong><p>การเก็บประวัติไม่คืน slot ไม่เปิดเคสใหม่ และยังตรวจย้อนหลังได้</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>10 · เคส Math + Verbal (Combined) ส่งต่อห้อง</h2>
+  <p class="intro">ผู้ปกครองคนเดียวใช้สองห้องต่อเนื่อง ระบบสลับห้องให้อัตโนมัติเมื่องบวิชาแรก</p>
+  <div class="grid"><figure id="c10-01-combined-queue-before">
+  <a href="c10-01-combined-queue-before.png" target="_blank"><img loading="lazy" src="c10-01-combined-queue-before.png" alt="เคส Combined ในห้อง Math"></a>
+  <figcaption><strong>เคส Combined ในห้อง Math</strong><p>ผู้ปกครองจอง Math + Verbal ระบบเริ่มที่ห้อง Math และยังไม่เคยถูกเรียก</p></figcaption>
+</figure>
+<figure id="c10-02-combined-serving-math">
+  <a href="c10-02-combined-serving-math.png" target="_blank"><img loading="lazy" src="c10-02-combined-serving-math.png" alt="Combined กำลังปรึกษา Math"></a>
+  <figcaption><strong>Combined กำลังปรึกษา Math</strong><p>ตัวจับเวลาเดิน และความคืบหน้าแสดงว่า Math กำลังทำอยู่ Verbal ยังรอ</p></figcaption>
+</figure>
+<figure id="c10-03-combined-handoff">
+  <a href="c10-03-combined-handoff.png" target="_blank"><img loading="lazy" src="c10-03-combined-handoff.png" alt="จบ Math แล้วส่งต่อ Verbal"></a>
+  <figcaption><strong>จบ Math แล้วส่งต่อ Verbal</strong><p>สถานะกลับเป็นรอเรียกคิวในห้อง Verbal พร้อมข้อความแจ้ง Staff ว่าต้องจัดคิวห้อง Verbal ก่อนเรียกครั้งแรก</p></figcaption>
+</figure>
+<figure id="c10-04-combined-verbal-queue">
+  <a href="c10-04-combined-verbal-queue.png" target="_blank"><img loading="lazy" src="c10-04-combined-verbal-queue.png" alt="ห้อง Verbal หลังส่งต่อ"></a>
+  <figcaption><strong>ห้อง Verbal หลังส่งต่อ</strong><p>เคส Combined เข้าคิว Verbal ตามลำดับที่ Staff บันทึก</p></figcaption>
+</figure>
+<figure id="c10-05-combined-serving-verbal">
+  <a href="c10-05-combined-serving-verbal.png" target="_blank"><img loading="lazy" src="c10-05-combined-serving-verbal.png" alt="Combined กำลังปรึกษา Verbal"></a>
+  <figcaption><strong>Combined กำลังปรึกษา Verbal</strong><p>ใช้เวลาต่อคิวเดิมต่อเนื่อง ไม่จ่าย slot ใหม่</p></figcaption>
+</figure>
+<figure id="c10-06-combined-completed-both-rooms">
+  <a href="c10-06-combined-completed-both-rooms.png" target="_blank"><img loading="lazy" src="c10-06-combined-completed-both-rooms.png" alt="รายละเอียด Combined ครบทั้งสองห้อง"></a>
+  <figcaption><strong>รายละเอียด Combined ครบทั้งสองห้อง</strong><p>โมดัลแสดงเวลาเรียก/เริ่ม/จบของทั้ง Math และ Verbal พร้อมระยะเวลาจริง</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>11 · ไม่มาเข้าคิว (No-show) และคืนคิว</h2>
+  <p class="intro">เมื่อเรียกแล้วไม่มา Staff ปิดเคสได้ และคืนเข้ารอได้โดยต้องจัดลำดับใหม่</p>
+  <div class="grid"><figure id="c11-01-waiting-before-noshow">
+  <a href="c11-01-waiting-before-noshow.png" target="_blank"><img loading="lazy" src="c11-01-waiting-before-noshow.png" alt="คิวก่อนเกิด No-show"></a>
+  <figcaption><strong>คิวก่อนเกิด No-show</strong><p>สถานะรอเรียกคิวพร้อมลำดับในห้อง Verbal</p></figcaption>
+</figure>
+<figure id="c11-02-noshow-row">
+  <a href="c11-02-noshow-row.png" target="_blank"><img loading="lazy" src="c11-02-noshow-row.png" alt="ปิดเคสว่าไม่มา"></a>
+  <figcaption><strong>ปิดเคสว่าไม่มา</strong><p>สถานะ No-show ไม่กินคิวในห้อง และลำดับของคนอื่นไม่ถูกเลื่อนโดยพลการ</p></figcaption>
+</figure>
+<figure id="c11-03-tracking-noshow">
+  <a href="c11-03-tracking-noshow.png" target="_blank"><img loading="lazy" src="c11-03-tracking-noshow.png" alt="ผู้ปกครองเห็นสถานะไม่มาเข้าคิว"></a>
+  <figcaption><strong>ผู้ปกครองเห็นสถานะไม่มาเข้าคิว</strong><p>ลิงก์เดิมยังใช้ได้ ระบบแจ้งให้ติดต่อทีมงานเพื่อตรวจสอบ</p></figcaption>
+</figure>
+<figure id="c11-04-noshow-restored">
+  <a href="c11-04-noshow-restored.png" target="_blank"><img loading="lazy" src="c11-04-noshow-restored.png" alt="คืนคิวเข้ารอแล้ว"></a>
+  <figcaption><strong>คืนคิวเข้ารอแล้ว</strong><p>ระบบล้างลำดับเดิมและให้ Staff บันทึกคิวใหม่ เพื่อไม่ให้ตำแหน่งชนกับคนอื่น</p></figcaption>
+</figure>
+<figure id="c11-05-noshow-resaved">
+  <a href="c11-05-noshow-resaved.png" target="_blank"><img loading="lazy" src="c11-05-noshow-resaved.png" alt="บันทึกคิวใหม่หลังคืนสถานะ"></a>
+  <figcaption><strong>บันทึกคิวใหม่หลังคืนสถานะ</strong><p>ผู้ปกครองกลับเข้าคิวได้ตามลำดับใหม่ของห้อง</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>12 · ยกเลิกการจองและคืนการจอง</h2>
+  <p class="intro">ผู้ปกครองแจ้งยกเลิก Staff เก็บเหตุผลไว้ตรวจสอบ และคืนการจองภายหลังได้</p>
+  <div class="grid"><figure id="c12-01-cancel-modal">
+  <a href="c12-01-cancel-modal.png" target="_blank"><img loading="lazy" src="c12-01-cancel-modal.png" alt="โมดัลยกเลิกการจอง"></a>
+  <figcaption><strong>โมดัลยกเลิกการจอง</strong><p>ต้องระบุเหตุผลก่อนยืนยัน ระบบคืนที่ว่างให้รอบนั้นทันที</p></figcaption>
+</figure>
+<figure id="c12-02-cancel-reason">
+  <a href="c12-02-cancel-reason.png" target="_blank"><img loading="lazy" src="c12-02-cancel-reason.png" alt="กรอกเหตุผลการยกเลิก"></a>
+  <figcaption><strong>กรอกเหตุผลการยกเลิก</strong><p>เหตุผลถูกบันทึกในประวัติและแสดงในแท็บรายการยกเลิก</p></figcaption>
+</figure>
+<figure id="c12-03-cancelled-tab">
+  <a href="c12-03-cancelled-tab.png" target="_blank"><img loading="lazy" src="c12-03-cancelled-tab.png" alt="แท็บรายการยกเลิก"></a>
+  <figcaption><strong>แท็บรายการยกเลิก</strong><p>รายการที่ยกเลิกพร้อมเหตุผล และรหัสคิวถูกคืนเข้าระบบ</p></figcaption>
+</figure>
+<figure id="c12-04-restore-modal">
+  <a href="c12-04-restore-modal.png" target="_blank"><img loading="lazy" src="c12-04-restore-modal.png" alt="โมดัลคืนการจอง"></a>
+  <figcaption><strong>โมดัลคืนการจอง</strong><p>เลือกคืนรอบเดิมหรือรอบใหม่ได้ทันที โดยยังใช้ข้อมูลและลิงก์ติดตามเดิม</p></figcaption>
+</figure>
+<figure id="c12-05-restored-row">
+  <a href="c12-05-restored-row.png" target="_blank"><img loading="lazy" src="c12-05-restored-row.png" alt="คืนการจองสำเร็จ"></a>
+  <figcaption><strong>คืนการจองสำเร็จ</strong><p>รายการกลับมาเป็นรอเช็กอิน ใช้ลิงก์เดิม และต้องเช็กอิน/จัดคิวใหม่ก่อนเรียก</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>13 · Admin กู้คืนเคสและลบรายการยกเลิก</h2>
+  <p class="intro">สิทธิ์ Admin เท่านั้นที่ย้อนสถานะหรือลบถาวรได้ พร้อมการยืนยันและเหตุผล</p>
+  <div class="grid"><figure id="c13-01-recovery-modal">
+  <a href="c13-01-recovery-modal.png" target="_blank"><img loading="lazy" src="c13-01-recovery-modal.png" alt="โมดัลคืนสถานะเฉพาะราย (Admin)"></a>
+  <figcaption><strong>โมดัลคืนสถานะเฉพาะราย (Admin)</strong><p>เลือกคืนเป็นรอเช็กอินหรือยกเลิกเคสที่จบแล้ว พร้อมผลข้างเคียงที่ชัดเจน</p></figcaption>
+</figure>
+<figure id="c13-02-recovered-cancelled">
+  <a href="c13-02-recovered-cancelled.png" target="_blank"><img loading="lazy" src="c13-02-recovered-cancelled.png" alt="เคสที่จบแล้วถูกย้อนเป็นยกเลิก"></a>
+  <figcaption><strong>เคสที่จบแล้วถูกย้อนเป็นยกเลิก</strong><p>การกู้คืนไม่ลบประวัติเดิม และคืน slot ให้รอบนั้น</p></figcaption>
+</figure>
+<figure id="c13-03-delete-modal">
+  <a href="c13-03-delete-modal.png" target="_blank"><img loading="lazy" src="c13-03-delete-modal.png" alt="โมดัลลบรายการยกเลิกถาวร (Admin)"></a>
+  <figcaption><strong>โมดัลลบรายการยกเลิกถาวร (Admin)</strong><p>ต้องยืนยันรายการเจาะจง ลบประวัติและงานเมลของรายการนี้เท่านั้น</p></figcaption>
+</figure>
+<figure id="c13-04-deleted-gone">
+  <a href="c13-04-deleted-gone.png" target="_blank"><img loading="lazy" src="c13-04-deleted-gone.png" alt="ลบถาวรแล้วเหลือเฉพาะรายการยกเลิกอื่น"></a>
+  <figcaption><strong>ลบถาวรแล้วเหลือเฉพาะรายการยกเลิกอื่น</strong><p>รหัสของรายการที่ลบถูกคืนเข้าระบบ รายการอื่นไม่ได้รับผลกระทบ</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>14 · สลับช่วงเวลาระหว่างสองครอบครัว</h2>
+  <p class="intro">Staff สลับรอบให้ผู้ปกครองสองรายพร้อมกันโดยไม่ต้องยกเลิกการจอง</p>
+  <div class="grid"><figure id="c14-01-swap-modal">
+  <a href="c14-01-swap-modal.png" target="_blank"><img loading="lazy" src="c14-01-swap-modal.png" alt="โมดัลสลับช่วงเวลา"></a>
+  <figcaption><strong>โมดัลสลับช่วงเวลา</strong><p>ค้นหาและเลือกผู้ปกครองอีกคนที่ระดับ/วิชาเดียวกันต่างรอบ</p></figcaption>
+</figure>
+<figure id="c14-02-swap-confirm">
+  <a href="c14-02-swap-confirm.png" target="_blank"><img loading="lazy" src="c14-02-swap-confirm.png" alt="ตรวจผลก่อนยืนยัน"></a>
+  <figcaption><strong>ตรวจผลก่อนยืนยัน</strong><p>ระบบแสดงผลลัพธ์ทั้งสองฝ่ายและต้องยืนยันว่าทั้งคู่ตกลงสลับกัน</p></figcaption>
+</figure>
+<figure id="c14-03-swap-result">
+  <a href="c14-03-swap-result.png" target="_blank"><img loading="lazy" src="c14-03-swap-result.png" alt="สลับช่วงเวลาสำเร็จ"></a>
+  <figcaption><strong>สลับช่วงเวลาสำเร็จ</strong><p>ทั้งสองรายได้รอบใหม่พร้อมกัน รหัสคิว/ข้อมูล/ลิงก์ติดตามยังเป็นของแต่ละคน</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>15 · ส่งออก Excel ให้ทีมงาน</h2>
+  <p class="intro">ข้อมูลคิวทั้งหมดดาวน์โหลดเป็นไฟล์ Excel ได้จากหน้า Staff</p>
+  <div class="grid"><figure id="c15-01-export-notice">
+  <a href="c15-01-export-notice.png" target="_blank"><img loading="lazy" src="c15-01-export-notice.png" alt="Export Excel สำเร็จ"></a>
+  <figcaption><strong>Export Excel สำเร็จ</strong><p>ไฟล์ SPR_Queue_Registrations_20261106_080148Z.xlsx มีผู้ลงทะเบียนทุกวัน/ทุกวิชา เฉพาะที่ยังแสดงอยู่</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>16 · มุมมอง Operator (ไม่ใช่ Admin)</h2>
+  <p class="intro">สิทธิ์ Operator จัดคิวได้ แต่ไม่เห็นการตั้งค่าหรือเครื่องมือ Admin</p>
+  <div class="grid"><figure id="c16-01-operator-dashboard">
+  <a href="c16-01-operator-dashboard.png" target="_blank"><img loading="lazy" src="c16-01-operator-dashboard.png" alt="Operator Dashboard"></a>
+  <figcaption><strong>Operator Dashboard</strong><p>หัวจอไม่มีปุ่ม &quot;ตั้งเวลาต่อคิว&quot; และไม่มีเมนู Admin</p></figcaption>
+</figure>
+<figure id="c16-02-operator-row-actions">
+  <a href="c16-02-operator-row-actions.png" target="_blank"><img loading="lazy" src="c16-02-operator-row-actions.png" alt="Operator ไม่เห็นปุ่มลบถาวร"></a>
+  <figcaption><strong>Operator ไม่เห็นปุ่มลบถาวร</strong><p>ปุ่มคืนการจองยังใช้ได้ แต่ปุ่มลบถาวร/คืนสถานะเป็นของ Admin เท่านั้น</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>17 · จอแสดงคิวที่หน้างาน</h2>
+  <p class="intro">จอทีวีและหน้าเว็บสาธารณะแสดงคิวที่กำลังเรียก/ปรึกษา และคิวถัดไป</p>
+  <div class="grid"><figure id="c17-01-display-board">
+  <a href="c17-01-display-board.png" target="_blank"><img loading="lazy" src="c17-01-display-board.png" alt="จอแสดงคิว · หน้าเว็บ"></a>
+  <figcaption><strong>จอแสดงคิว · หน้าเว็บ</strong><p>แยก SAT Math / SAT Verbal แสดง NOW CALLING และคิวถัดไปตามลำดับที่ Staff บันทึก</p></figcaption>
+</figure>
+<figure id="c17-02-display-kiosk">
+  <a href="c17-02-display-kiosk.png" target="_blank"><img loading="lazy" src="c17-02-display-kiosk.png" alt="โหมด Kiosk สำหรับจอในสถานที่"></a>
+  <figcaption><strong>โหมด Kiosk สำหรับจอในสถานที่</strong><p>หน้าจอเต็มไม่มีเมนู เหมาะกับทีวีที่หน้างาน อัปเดตเองทุก 5 วินาที</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>18 · หน้าจอมือถือ</h2>
+  <p class="intro">ผู้ปกครองและ Staff ใช้มือถือหน้างานได้ครบ</p>
+  <div class="grid"><figure id="c18-01-mobile-booking">
+  <a href="c18-01-mobile-booking.png" target="_blank"><img loading="lazy" src="c18-01-mobile-booking.png" alt="หน้าจองบนมือถือ"></a>
+  <figcaption><strong>หน้าจองบนมือถือ</strong><p>ฟอร์มจองใช้งานบนจอแคบได้โดยไม่ต้องซูม</p></figcaption>
+</figure>
+<figure id="c18-02-mobile-tracking-serving">
+  <a href="c18-02-mobile-tracking-serving.png" target="_blank"><img loading="lazy" src="c18-02-mobile-tracking-serving.png" alt="ลิงก์ติดตามคิวบนมือถือ · กำลังปรึกษา"></a>
+  <figcaption><strong>ลิงก์ติดตามคิวบนมือถือ · กำลังปรึกษา</strong><p>ผู้ปกครองเห็นสถานะล่าสุดและตำแหน่งคิวของตัวเอง</p></figcaption>
+</figure>
+<figure id="c18-03-mobile-checkin">
+  <a href="c18-03-mobile-checkin.png" target="_blank"><img loading="lazy" src="c18-03-mobile-checkin.png" alt="Staff เช็กอินบนมือถือ"></a>
+  <figcaption><strong>Staff เช็กอินบนมือถือ</strong><p>ตารางเช็กอินแปลงเป็นการ์ด อ่านง่ายและกดปุ่มได้สะดวก</p></figcaption>
+</figure>
+<figure id="c18-04-mobile-queue">
+  <a href="c18-04-mobile-queue.png" target="_blank"><img loading="lazy" src="c18-04-mobile-queue.png" alt="จัดคิวบนมือถือ"></a>
+  <figcaption><strong>จัดคิวบนมือถือ</strong><p>คอลัมน์เวลาคิวและปุ่มเรียก/เริ่ม/จบยังใช้งานได้บนมือถือ</p></figcaption>
+</figure>
+<figure id="c18-05-mobile-settings">
+  <a href="c18-05-mobile-settings.png" target="_blank"><img loading="lazy" src="c18-05-mobile-settings.png" alt="ตั้งเวลาต่อคิวบนมือถือ"></a>
+  <figcaption><strong>ตั้งเวลาต่อคิวบนมือถือ</strong><p>Admin ตั้งค่าเวลาต่อคิวได้จากมือถือ</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>19 · สถานะขอบและข้อผิดพลาด</h2>
+  <p class="intro">ลิงก์ผิด ค้นหาไม่เจอ และ session หมดอายุ ระบบบอกผู้ใช้ชัดเจน</p>
+  <div class="grid"><figure id="c19-01-invalid-tracking-link">
+  <a href="c19-01-invalid-tracking-link.png" target="_blank"><img loading="lazy" src="c19-01-invalid-tracking-link.png" alt="ลิงก์ติดตามคิวไม่ถูกต้อง"></a>
+  <figcaption><strong>ลิงก์ติดตามคิวไม่ถูกต้อง</strong><p>ระบบไม่เปิดเผยข้อมูลใด ๆ และให้ติดต่อทีมงานพร้อมเบอร์โทร</p></figcaption>
+</figure>
+<figure id="c19-02-search-empty">
+  <a href="c19-02-search-empty.png" target="_blank"><img loading="lazy" src="c19-02-search-empty.png" alt="ค้นหาไม่พบรายการ"></a>
+  <figcaption><strong>ค้นหาไม่พบรายการ</strong><p>ตารางว่างพร้อมคำแนะนำให้เปลี่ยนเงื่อนไข</p></figcaption>
+</figure>
+<figure id="c19-03-session-expired">
+  <a href="c19-03-session-expired.png" target="_blank"><img loading="lazy" src="c19-03-session-expired.png" alt="Session หมดอายุหรือถูกล้าง"></a>
+  <figcaption><strong>Session หมดอายุหรือถูกล้าง</strong><p>ระบบกลับไปหน้าเข้าสู่ระบบโดยไม่ค้างข้อมูล Staff เก่า</p></figcaption>
+</figure></div>
+</section>
+<section>
+  <h2>20 · สรุปภาพรวมหลังจบวัน</h2>
+  <p class="intro">สถานะสุดท้ายของคิวและรายการทั้งหมด</p>
+  <div class="grid"><figure id="c20-01-final-dashboard">
+  <a href="c20-01-final-dashboard.png" target="_blank"><img loading="lazy" src="c20-01-final-dashboard.png" alt="ภาพรวมคิวหลังจบวัน"></a>
+  <figcaption><strong>ภาพรวมคิวหลังจบวัน</strong><p>ผู้ปกครองที่จบแล้ว/ยกเลิก/รอคิว แยกสถานะชัดเจน พร้อมเวลาของทุกคน</p></figcaption>
+</figure>
+<figure id="c20-02-final-completed">
+  <a href="c20-02-final-completed.png" target="_blank"><img loading="lazy" src="c20-02-final-completed.png" alt="รายการที่จบแล้วทั้งวัน"></a>
+  <figcaption><strong>รายการที่จบแล้วทั้งวัน</strong><p>เก็บเวลาเริ่ม–จบของทุกรายไว้ตรวจสอบย้อนหลัง</p></figcaption>
+</figure></div>
+</section></main>
+</html>

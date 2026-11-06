@@ -1,0 +1,152 @@
+{
+  "event": {
+    "id": "performance-nov-2026",
+    "title": "Student Performance Report",
+    "cycle": "November 2026",
+    "venue": "Warwick Institute · ชั้น 12A",
+    "sample": false,
+    "timezone": "Asia/Bangkok"
+  },
+  "rules": [
+    {
+      "level": "Beginner",
+      "subject": "Math",
+      "date": "2026-11-07",
+      "mode": "On-site",
+      "periods": [
+        {
+          "id": "P1300_1400",
+          "start": "13:00",
+          "end": "14:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1700_1800",
+          "start": "17:00",
+          "end": "18:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1800_2000",
+          "start": "18:00",
+          "end": "20:00",
+          "capacity": 8
+        }
+      ]
+    },
+    {
+      "level": "Beginner",
+      "subject": "Verbal",
+      "date": "2026-11-07",
+      "mode": "On-site",
+      "periods": [
+        {
+          "id": "P1700_1800",
+          "start": "17:00",
+          "end": "18:00",
+          "capacity": 4
+        },
+        {
+          "id": "P1800_2000",
+          "start": "18:00",
+          "end": "20:00",
+          "capacity": 7
+        }
+      ]
+    },
+    {
+      "level": "Beginner",
+      "subject": "Combined",
+      "date": "2026-11-07",
+      "mode": "On-site",
+      "periods": [
+        {
+          "id": "P1400_1530",
+          "start": "14:00",
+          "end": "15:30",
+          "capacity": 5
+        },
+        {
+          "id": "P1530_1700",
+          "start": "15:30",
+          "end": "17:00",
+          "capacity": 6
+        }
+      ]
+    },
+    {
+      "level": "High Level",
+      "subject": "Math",
+      "date": "2026-11-06",
+      "mode": "On-site",
+      "periods": [
+        {
+          "id": "P1400_1530",
+          "start": "14:00",
+          "end": "15:30",
+          "capacity": 7
+        },
+        {
+          "id": "P1530_1700",
+          "start": "15:30",
+          "end": "17:00",
+          "capacity": 8
+        }
+      ]
+    },
+    {
+      "level": "High Level",
+      "subject": "Verbal",
+      "date": "2026-11-06",
+      "mode": "On-site",
+      "periods": [
+        {
+          "id": "P1400_1530",
+          "start": "14:00",
+          "end": "15:30",
+          "capacity": 7
+        },
+        {
+          "id": "P1530_1700",
+          "start": "15:30",
+          "end": "17:00",
+          "capacity": 8
+        }
+      ]
+    },
+    {
+      "level": "High Level",
+      "subject": "Combined",
+      "date": "2026-11-06",
+      "mode": "On-site",
+      "periods": [
+        {
+          "id": "P1400_1530",
+          "start": "14:00",
+          "end": "15:30",
+          "capacity": 7
+        },
+        {
+          "id": "P1530_1700",
+          "start": "15:30",
+          "end": "17:00",
+          "capacity": 8
+        }
+      ]
+    }
+  ],
+  "seminars": [
+    {
+      "subject": "Math",
+      "date": "2026-11-07",
+      "start": "11:30",
+      "end": "13:00"
+    },
+    {
+      "subject": "Verbal",
+      "date": "2026-11-07",
+      "start": "13:00",
+      "end": "14:00"
+    }
+  ]
+}

@@ -1,5 +1,12 @@
 # Validation — PostgreSQL / OpenAI UI update — 13 October 2026
 
+## Consult-day walkthrough screenshots — 6 November 2026
+
+- Added a Playwright capture of the full consult day: 70 screenshots across 20 chapters under [e2e-2026-11-06-full-flow](e2e-2026-11-06-full-flow/STORYBOARD.md), covering parent booking (including a round taken at the last moment), tracking link before check-in, Staff sign-in and failed sign-in, check-in, queue save and per-slot times, calling, serving with a live server-anchored timer, overrun and late flags, an Admin duration change, completion with real start/end times, Combined Math→Verbal handoff, no-show and queue recovery, cancellation and restoration, Admin recovery and permanent delete, swapping two reservations, Operator permissions, Excel export, public display and kiosk, mobile booking/tracking/staff screens, invalid tracking link, empty filter and an expired session.
+- Captured with Playwright (`playwright-core`, installed Chrome, headless at 1440×1100; mobile 390×844 at 2×; kiosk 1920×1080) against an isolated local Go server and a scratch PostgreSQL database. Mail and Sheets sync were disabled and no Railway setting, production booking, email or live Sheet was touched.
+- The demo environment uses [event.demo.json](../scripts/e2e-flow/event.demo.json): same event, levels, subjects and real 7 November Beginner rounds, with the 6 November High Level rounds moved into the capture window (14:00–15:30, 15:30–17:00) and marked On-site so room queues, ETA and the public display can be shown. The committed `event.json` / `event.production.json` are unchanged. Time-passing cases move the saved stage timestamps into the past instead of waiting.
+- All chapters completed with zero uncaught page errors, and the Excel download produced a real `SPR_Queue_Registrations_*.xlsx` file. Capture scripts and setup instructions are in [scripts/e2e-flow](../scripts/e2e-flow/README.md), so the set can be regenerated against a fresh local database.
+
 ## Per-row consult timer and slot estimates — 6 November 2026
 
 - The Staff dashboard now shows each booking's consult clock: `Calling` → `เรียก HH:mm`; `Serving` → `เริ่ม HH:mm · ใช้ไป mm:ss · คาดจบ HH:mm` with a live one-second timer anchored to the server clock (`serverTime` in the packet), switching to `เกิน mm:ss` after the configured duration; `Completed` → `HH:mm–HH:mm · N นาที`. The same cell appears in the queue, check-in and completed/cancelled tables and in the detail modal, which also lists per-room stage history. Rows without timing or estimate show `—`.

@@ -1,0 +1,12 @@
+{
+  "name": "warwick-e2e-flow",
+  "private": true,
+  "type": "module",
+  "description": "Playwright capture of the Warwick consult-day walkthrough used in docs/e2e-2026-11-06-full-flow/",
+  "scripts": {
+    "capture": "node c1-parent.mjs && node c2-staff.mjs && node c3-cases.mjs && node c4-misc.mjs && node storyboard.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "^1.65.0"
+  }
+}
