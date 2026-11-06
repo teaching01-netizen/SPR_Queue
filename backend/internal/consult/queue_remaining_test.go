@@ -94,7 +94,12 @@ func TestRemainingAcrossPeriodsAndCombinedHandoff(t *testing.T) {
 	live.Status = "Completed"
 	live.Stages = map[string]Stage{"Math": {CalledAt: "2026-11-07T10:00:00Z", EndedAt: "2026-11-07T10:10:00Z"}}
 	n, state = s.queuesUntilTurn([]Booking{live, own}, own)
-	if n != nil || state != "staff-review" {
-		t.Fatal("misleading number for past period")
+	if n == nil || *n != 1 || state != "ready" {
+		t.Fatal("earlier arrival excluded after early service of later period", n, state)
+	}
+	live.Status = "Serving"
+	n, state = s.queuesUntilTurn([]Booking{live, own}, own)
+	if n == nil || *n != 1 || state != "ready" {
+		t.Fatal("earlier arrival excluded during early service of later period", n, state)
 	}
 }

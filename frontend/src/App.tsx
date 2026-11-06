@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, FormEvent } from 'react';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CalendarDays, Check, CheckCheck, ChevronRight, CircleHelp, Clock3, Copy, GraduationCap, LayoutDashboard, ListOrdered, MapPin, Monitor, Plus, Radio, RefreshCw, Search, ShieldCheck, Sparkles, Ticket, Users, X, ExternalLink, Download, Mail, Video, BookOpen, CheckCircle2 } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CalendarDays, Check, CheckCheck, ChevronRight, CircleHelp, Clock3, Copy, GraduationCap, LayoutDashboard, ListOrdered, MapPin, Monitor, Plus, RefreshCw, Search, ShieldCheck, Sparkles, Ticket, Users, X, ExternalLink, Download, Mail, Video, BookOpen, CheckCircle2 } from 'lucide-react';
 import { api, ApiError } from './api';
 import { Button as UIAction } from '@openai/apps-sdk-ui/components/Button';
 import { Input as UIInput } from '@openai/apps-sdk-ui/components/Input';
@@ -499,7 +499,6 @@ function StaffPage({ user }: { user: StaffUser }) {
   // A room queue must be saved in full; a view filter must never silently reorder hidden rows.
   const canOrder = !search.trim() && statusFilter === 'All' && visibleEligible.length === eligible.length;
   const physicalLive = bookings.filter(b => b.level === scope.level && b.date === scope.date && ['Calling', 'Serving'].includes(b.status));
-  const live = physicalLive.filter(b => b.currentSubject === scope.stream);
   const inactive = busy || !!loadError || loading;
   const countRows = view !== 'queue' ? checkRows : list;
   const counts = [countRows.length, countRows.filter(b => b.checkedInAt && !['Cancelled', 'No-show'].includes(b.status)).length, countRows.filter(b => b.status === 'Waiting').length, countRows.filter(b => b.status === 'Completed').length];
@@ -685,7 +684,6 @@ function StaffPage({ user }: { user: StaffUser }) {
         <div className="table-wrap"><table><thead><tr><th>รหัสคิว / นักเรียน</th><th>วิชาที่จอง / ความคืบหน้า</th><th>สถานะ</th><th>เวลา</th><th>{view === 'cancelled' ? 'คืนการจอง / แก้รายการ' : 'เช็กอิน / จัดการรายการ'}</th></tr></thead><tbody>{rows.map(b => <tr key={b.id}><td>{nameCell(b)}</td><td><span className="subject-pill">{subjectLabel(b.subject)}</span><StageProgress booking={b} /></td><td><Badge status={b.status} />{b.status === 'Cancelled' && <span className="cancel-reason">{b.cancellationReason}</span>}</td><td>{timeCell(b)}</td><td>{rowActions(b, true)}</td></tr>)}</tbody></table></div>
       </section>;
     })}{!loading && !checkRows.length && <div className="card empty"><Users size={28} /><h3>ไม่พบรายการตามตัวกรอง</h3><p>ลองเลือก All หรือค้นหาด้วย Email / Wcode</p></div>}</div> : <>
-      <div className="staff-live"><div><div className="live-label"><span className="dot" />กำลังให้บริการ · ห้อง {scope.stream} · รวมทุกวิชาที่จอง / ทุกรอบของระดับและวันนี้</div>{live.length ? live.map(b => <div key={b.id} className="staff-live-info"><strong>{b.queueNo}</strong><span>{b.nickname} · {subjectLabel(b.subject)}</span><Badge status={b.status} /></div>) : <div className="staff-live-info"><strong>—</strong><span>ยังไม่มีคิวที่กำลังเรียกหรือปรึกษา</span></div>}</div><button className="btn primary" disabled={inactive || hasDraft || live.length > 0 || !list.some(b => b.status === 'Waiting' && b.queueNo && b.orders[b.currentSubject])} onClick={() => { const next = list.find(b => b.status === 'Waiting' && b.queueNo && b.orders[b.currentSubject]); if (next) action(next, 'Calling'); }}><Radio size={17} />เรียกคิวถัดไปตามตัวกรอง</button></div>
       <div className="card queue-card"><div className="queue-toolbar"><div><h2><ListOrdered size={19} />จัดลำดับและควบคุมคิว · ห้อง {scope.stream}</h2><p>ลูกศรจัดลำดับภายในรอบ · รหัสคิวคงเดิมเมื่อส่งต่อวิชา · ประมาณคิวละ {consultMinutes} นาที</p></div><button className="btn primary" disabled={inactive || !eligible.length || !canOrder} onClick={() => void run(async () => { await api.assign(scope, draft ?? eligible.map(b => b.id), draftRevision.current ?? packet?.revision ?? -1); clearDraft(); }, 'บันทึกลำดับและจัดสรรรหัสคิวเรียบร้อย')}><Check size={16} />{draft ? 'บันทึกลำดับใหม่' : 'บันทึก / จัดคิว'}</button></div>
         {!canOrder && eligible.length > 0 && <div className="draft-bar">จัดลำดับต้องเห็นคิวที่รอในห้อง / รอบนี้ครบ <button onClick={() => { setSubjectFilter('All'); setSearch(''); setStatusFilter('All'); clearDraft(); }}>ดูทั้งหมดเพื่อจัดลำดับ</button></div>}
         {draft && <div className="draft-bar">มีการเปลี่ยนลำดับที่ยังไม่ได้บันทึก <button onClick={clearDraft}>ยกเลิกการเปลี่ยน</button></div>}

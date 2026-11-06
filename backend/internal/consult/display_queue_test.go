@@ -58,7 +58,7 @@ func TestUpcomingCombinedRoomAndPeriodScope(t *testing.T) {
 	}
 	bookings := []Booking{b("B-V-010", "Verbal", "Calling", "Verbal", period, 1), b("B-MV-003", "Combined", "Waiting", "Math", "P1400_1530", 1), b("B-V-002", "Verbal", "Waiting", "Verbal", period, 2), b("B-V-001", "Verbal", "Waiting", "Verbal", period, 1), b("B-V-004", "Verbal", "Waiting", "Verbal", period, 0), b("B-V-005", "Verbal", "Waiting", "Verbal", "P1700_1800", 1)}
 	v := s.upcoming(bookings, "Beginner", "2026-11-07", "Verbal")
-	if len(v) != 2 || !reflect.DeepEqual([]string{v[0].QueueNo, v[1].QueueNo}, []string{"B-V-001", "B-V-002"}) {
+	if len(v) != 2 || !reflect.DeepEqual([]string{v[0].QueueNo, v[1].QueueNo}, []string{"B-V-005", "B-V-001"}) {
 		t.Fatal("wrong subject, period or order", v)
 	}
 	bookings[1].CurrentSubject = "Verbal"
@@ -68,10 +68,22 @@ func TestUpcomingCombinedRoomAndPeriodScope(t *testing.T) {
 	}
 	bookings[0].Status = "Completed"
 	v = s.upcoming(bookings, "Beginner", "2026-11-07", "Verbal")
-	if len(v) != 1 || v[0].QueueNo != "B-V-005" {
+	if len(v) != 2 || v[0].QueueNo != "B-V-005" || v[1].QueueNo != "B-V-001" {
 		t.Fatal("idle earliest ready period", v)
 	}
 	if len(s.upcoming(bookings, "High Level", "2026-11-07", "Verbal")) != 0 || len(s.upcoming(bookings, "Beginner", "2026-11-06", "Verbal")) != 0 {
 		t.Fatal("scope leak")
+	}
+}
+
+func TestUpcomingIncludesEarlyArrivalsFromNextPeriod(t *testing.T) {
+	s := &Service{Config: novemberConfig(t)}
+	checked, code := "checked", "next"
+	live := queuedBooking("live", "Beginner", "2026-11-07", "P1300_1400", "Math", "Math", "Serving", 1, Stage{})
+	next := queuedBooking("next", "Beginner", "2026-11-07", "P1700_1800", "Math", "Math", "Waiting", 1, Stage{})
+	next.CheckedInAt, next.QueueNo = &checked, &code
+	v := s.upcoming([]Booking{live, next}, "Beginner", "2026-11-07", "Math")
+	if len(v) != 1 || v[0].QueueNo != code {
+		t.Fatal("early arrival missing from next queue", v)
 	}
 }

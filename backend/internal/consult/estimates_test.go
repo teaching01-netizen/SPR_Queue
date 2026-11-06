@@ -312,3 +312,37 @@ func TestEstimatesEmptyWhenNothingQueued(t *testing.T) {
 		t.Fatalf("expected nil, got %+v", got)
 	}
 }
+
+func TestEstimatesCheckedInParentsCanStartEarly(t *testing.T) {
+	cfg := testConfig(t)
+	checked := eventStamp("2026-08-15", 10, 20)
+	ready := func(id, period string, order int) Booking {
+		b := queuedBooking(id, "Beginner", "2026-08-15", period, "Verbal", "Verbal", "Waiting", order, Stage{})
+		b.CheckedInAt, b.QueueNo = &checked, &id
+		return b
+	}
+	serving := queuedBooking("serving", "Beginner", "2026-08-15", "P1100", "Verbal", "Verbal", "Serving", 0,
+		Stage{StartedAt: eventStamp("2026-08-15", 10, 25)})
+	bookings := []Booking{
+		ready("later-second", "P1100", 2),
+		queuedBooking("absent", "Beginner", "2026-08-15", "P1000", "Verbal", "Verbal", "Booked", 1, Stage{}),
+		ready("later-first", "P1100", 1),
+		ready("earlier", "P1000", 2),
+		serving,
+	}
+	got := computeEstimates(bookings, eventClock("2026-08-15", 10, 30), 10, cfg)
+	wantEstimate(t, got, "earlier", "2026-08-15", 10, 35, false)
+	wantEstimate(t, got, "later-first", "2026-08-15", 10, 45, false)
+	wantEstimate(t, got, "later-second", "2026-08-15", 10, 55, false)
+	// Absent parents retain schedule-based estimates, without holding up arrivals.
+	wantEstimate(t, got, "absent", "2026-08-15", 11, 5, true)
+
+	got = computeEstimates(bookings[:4], eventClock("2026-08-15", 10, 30), 10, cfg)
+	wantEstimate(t, got, "earlier", "2026-08-15", 10, 30, false)
+	wantEstimate(t, got, "later-first", "2026-08-15", 10, 40, false)
+
+	absent := queuedBooking("future-absent", "Beginner", "2026-08-15", "P1100", "Verbal", "Verbal", "Booked", 1, Stage{})
+	got = computeEstimates([]Booking{absent, ready("early-arrival", "P1100", 2)}, eventClock("2026-08-15", 10, 30), 10, cfg)
+	wantEstimate(t, got, "early-arrival", "2026-08-15", 10, 30, false)
+	wantEstimate(t, got, "future-absent", "2026-08-15", 11, 0, false)
+}

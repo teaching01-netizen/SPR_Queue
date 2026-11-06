@@ -20,6 +20,7 @@ type pendingSlot struct {
 	start time.Time
 	end   time.Time
 	order int
+	ready bool
 }
 
 // computeEstimates projects the consult start time of each queued slot.
@@ -35,6 +36,8 @@ type pendingSlot struct {
 // Only rows that hold a saved position are projected. Rows without a position,
 // cancelled/no-show rows, rows whose period left the event configuration and
 // rows whose current room already ended are skipped and consume no slot.
+// Checked-in, ready parents can start before their booked period. They precede
+// absent parents, whose estimates still respect the booked period start.
 func computeEstimates(bookings []Booking, now time.Time, minutes int, cfg Config) map[string]SlotEstimate {
 	if minutes <= 0 || len(bookings) == 0 {
 		return nil
@@ -86,7 +89,7 @@ func computeEstimates(bookings []Booking, now time.Time, minutes int, cfg Config
 				continue
 			}
 			rooms[key] = true
-			pending[key] = append(pending[key], pendingSlot{id: b.ID, start: start, end: end, order: b.Orders[stream]})
+			pending[key] = append(pending[key], pendingSlot{id: b.ID, start: start, end: end, order: b.Orders[stream], ready: readyForRoom(*b, stream)})
 		}
 	}
 	if len(pending) == 0 {
@@ -96,8 +99,15 @@ func computeEstimates(bookings []Booking, now time.Time, minutes int, cfg Config
 	for key := range rooms {
 		rows := pending[key]
 		sort.Slice(rows, func(i, j int) bool {
+			// Absent parents keep schedule-based estimates but cannot delay arrivals.
+			if rows[i].ready != rows[j].ready {
+				return rows[i].ready
+			}
 			if !rows[i].start.Equal(rows[j].start) {
 				return rows[i].start.Before(rows[j].start)
+			}
+			if !rows[i].end.Equal(rows[j].end) {
+				return rows[i].end.Before(rows[j].end)
 			}
 			if rows[i].order != rows[j].order {
 				return rows[i].order < rows[j].order
@@ -107,6 +117,9 @@ func computeEstimates(bookings []Booking, now time.Time, minutes int, cfg Config
 		base := cursor[key]
 		for _, row := range rows {
 			floor := row.start
+			if row.ready {
+				floor = now
+			}
 			if now.After(floor) {
 				floor = now
 			}
